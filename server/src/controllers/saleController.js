@@ -39,13 +39,55 @@ exports.createSale = async (req, res) => {
           throw new Error(`PRESCRIPTION REQUIRED: Product '${product.name}' requires a valid prescription ID`);
         }
 
+        // Expiry Guard Check
+        // A named batch must be the caller's own and still in date. With no
+        // batch named we pick first-expired-first-out from what is still in
+        // date, and refuse the sale when every tracked batch has expired.
+        let resolvedBatchId = null;
+
+        if (item.batchId) {
+          const batchRes = await client.query(
+            `SELECT batch_id, batch_number, expiry_date, expiry_date < CURRENT_DATE AS is_expired
+             FROM product_batches
+             WHERE batch_id = $1 AND product_id = $2 AND tenant_id = $3`,
+            [item.batchId, product.product_id, tenantId]
+          );
+
+          if (batchRes.rows.length === 0) {
+            throw new Error(`Batch not found for product '${product.name}'`);
+          }
+          if (batchRes.rows[0].is_expired) {
+            throw new Error(
+              `EXPIRED STOCK: Batch '${batchRes.rows[0].batch_number}' of '${product.name}' expired on ${new Date(batchRes.rows[0].expiry_date).toISOString().slice(0, 10)}`
+            );
+          }
+          resolvedBatchId = batchRes.rows[0].batch_id;
+        } else {
+          const tracked = await client.query(
+            `SELECT batch_id, expiry_date >= CURRENT_DATE AS is_sellable, quantity_on_hand
+             FROM product_batches
+             WHERE product_id = $1 AND tenant_id = $2
+             ORDER BY expiry_date ASC`,
+            [product.product_id, tenantId]
+          );
+
+          const sellable = tracked.rows.filter((b) => b.is_sellable && b.quantity_on_hand > 0);
+
+          if (tracked.rows.length > 0 && sellable.length === 0) {
+            throw new Error(`EXPIRED STOCK: All batches of '${product.name}' are expired or out of stock`);
+          }
+
+          // Products with no batch records are untracked stock and stay sellable.
+          resolvedBatchId = sellable.length > 0 ? sellable[0].batch_id : null;
+        }
+
         const unitPrice = parseFloat(product.selling_price);
         const itemSubtotal = unitPrice * item.quantity;
         computedSubtotal += itemSubtotal;
 
         validatedItems.push({
           productId: product.product_id,
-          batchId: item.batchId || null,
+          batchId: resolvedBatchId,
           unitPrice,
           quantity: item.quantity,
           subtotal: itemSubtotal
