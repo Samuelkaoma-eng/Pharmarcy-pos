@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Store, Check, Save } from 'lucide-react';
+import { Palette, Check, Save, Lock } from 'lucide-react';
+import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { get, put } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
+  const { refreshTenant } = useAuth();
   const [config, setConfig] = useState({
     name: 'Central Care Pharmacy',
     theme_color: '#3b82f6',
@@ -22,13 +26,29 @@ export default function Settings() {
     } catch (e) {}
   };
 
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async (e) => {
     e.preventDefault();
-    try {
-      await put('tenants/config', config);
-    } catch (e) {}
+    setSaving(true);
 
-    alert('🎉 Site Customizations & Personalization Saved Successfully!');
+    try {
+      const res = await put('tenants/config', config);
+
+      // Only report success when the server actually saved. The previous
+      // version swallowed the error and congratulated the user regardless.
+      if (res?.data) {
+        setConfig({ ...config, ...res.data });
+        await refreshTenant();
+        toast.success('Branding saved', { description: 'Your changes are live across the workspace.' });
+      } else {
+        toast.error('Could not save branding', { description: res?.error || 'The server rejected the change.' });
+      }
+    } catch {
+      toast.error('Could not save branding', { description: 'Connection failed. Check the backend server.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -87,10 +107,42 @@ export default function Settings() {
           <input type="text" className="input-field" value={config.address} onChange={(e) => setConfig({ ...config, address: e.target.value })} />
         </div>
 
-        <button type="submit" className="btn btn-success" style={{ marginTop: '10px', padding: '12px' }}>
-          <Save size={18} /> Save Site Personalization
+        <button type="submit" className="btn btn-success" disabled={saving} style={{ marginTop: '10px', padding: '12px' }}>
+          <Save size={18} /> {saving ? 'Saving…' : 'Save branding'}
         </button>
       </form>
+
+      {/* Operational limits belong to the platform, so they are shown here for
+          transparency but cannot be edited from inside the pharmacy. */}
+      <motion.div
+        className="settings-card"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1], delay: 0.06 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <Lock size={16} color="#94a3b8" />
+          <h3 style={{ fontSize: '1rem', fontWeight: 650 }}>Platform-managed settings</h3>
+        </div>
+        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+          These are set by platform staff in ControlHub. Contact them to request a change.
+        </p>
+
+        <div className="platform-settings">
+          <div>
+            <span>Expiry alert window</span>
+            <strong>{config.expiry_alert_days ?? '—'} days</strong>
+          </div>
+          <div>
+            <span>Low stock alerts</span>
+            <strong>{config.low_stock_alerts ? 'On' : 'Off'}</strong>
+          </div>
+          <div>
+            <span>Customer required on sale</span>
+            <strong>{config.require_customer_on_sale ? 'Yes' : 'No'}</strong>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

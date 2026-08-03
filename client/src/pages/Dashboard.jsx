@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  DollarSign, Package, AlertTriangle, FileText, ShoppingCart, 
-  UserPlus, UserCheck, Stethoscope, ArrowRight, Clock, CheckCircle 
+import { motion } from 'motion/react';
+import {
+  DollarSign, Package, AlertTriangle, FileText, ShoppingCart,
+  UserPlus, UserCheck, Stethoscope, ArrowRight, Clock, CheckCircle
 } from 'lucide-react';
 import { get } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+
+const EASE = [0.23, 1, 0.32, 1];
+
+// The dashboard is opened many times a day, so the entrance is brief and the
+// stagger is short. It exists to stop four tiles snapping in at once, nothing
+// more.
+const grid = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.045 } }
+};
+
+const tile = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: EASE } }
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { pharmacyName } = useAuth();
   const [stats, setStats] = useState({
     todaySales: 'K 1,250.00',
     totalItems: 320,
@@ -48,7 +66,7 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Dashboard Overview</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Central Care Pharmacy • Real-Time Operations</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>{pharmacyName} • Real-Time Operations</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn btn-success" onClick={() => navigate('/pos')}>
@@ -60,43 +78,48 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div className="stat-card">
+      <motion.div
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}
+        variants={grid}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div className="stat-card" variants={tile}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Today's Total Sales</span>
             <div style={{ background: 'rgba(34, 197, 94, 0.2)', padding: '8px', borderRadius: '10px' }}><DollarSign size={20} color="#4ade80" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#4ade80' }}>{stats.todaySales}</h2>
           <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Updated live from transactions</span>
-        </div>
+        </motion.div>
 
-        <div className="stat-card">
+        <motion.div className="stat-card" variants={tile}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Total Products in Stock</span>
             <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '8px', borderRadius: '10px' }}><Package size={20} color="#60a5fa" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f8fafc' }}>{stats.totalItems}</h2>
           <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Active inventory items</span>
-        </div>
+        </motion.div>
 
-        <div className="stat-card" onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
+        <motion.div className="stat-card" variants={tile} onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Low Stock Alerts</span>
             <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '8px', borderRadius: '10px' }}><AlertTriangle size={20} color="#f87171" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f87171' }}>{stats.lowStockCount}</h2>
           <span style={{ fontSize: '0.75rem', color: '#f87171' }}>Items below reorder level</span>
-        </div>
+        </motion.div>
 
-        <div className="stat-card" onClick={() => navigate('/triage')} style={{ cursor: 'pointer' }}>
+        <motion.div className="stat-card" variants={tile} onClick={() => navigate('/triage')} style={{ cursor: 'pointer' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Patients Waiting in Queue</span>
             <div style={{ background: 'rgba(234, 179, 8, 0.2)', padding: '8px', borderRadius: '10px' }}><Clock size={20} color="#facc15" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#facc15' }}>{stats.waitingPatients}</h2>
           <span style={{ fontSize: '0.75rem', color: '#facc15' }}>Triage walk-ins waiting</span>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '20px' }}>
         <h3 style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '14px', color: '#f8fafc' }}>Quick Operations</h3>
