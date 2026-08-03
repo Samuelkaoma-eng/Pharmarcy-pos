@@ -28,10 +28,17 @@ CREATE TABLE tenants (
     phone VARCHAR(20),
     license_number VARCHAR(50),
     status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('REGISTERED','SUBMITTED','UNDER_REVIEW','APPROVED','ACTIVE','REJECTED')),
+    -- Branding, owned by the pharmacy itself.
     theme_color VARCHAR(20) DEFAULT '#3b82f6',
     logo_url TEXT,
     currency_symbol VARCHAR(10) DEFAULT 'K',
     owner_email VARCHAR(100),
+    -- Operational settings, owned by the platform via ControlHub. A pharmacy
+    -- can read these but may not change them itself.
+    expiry_alert_days INT DEFAULT 90 CHECK (expiry_alert_days BETWEEN 7 AND 365),
+    low_stock_alerts BOOLEAN DEFAULT TRUE,
+    require_customer_on_sale BOOLEAN DEFAULT FALSE,
+    allow_public_registration BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

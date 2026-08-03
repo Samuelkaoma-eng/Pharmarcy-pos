@@ -125,12 +125,17 @@ exports.getLowStock = async (req, res) => {
 exports.getExpiryAlerts = async (req, res) => {
   try {
     const { tenantId } = req.user;
+    // The alert window is a per-pharmacy setting managed from the ControlHub,
+    // so it is read here rather than hardcoded.
     const result = await db.query(`
       SELECT b.*, p.name as product_name
       FROM product_batches b
       JOIN products p ON b.product_id = p.product_id
-      WHERE b.tenant_id = $1 AND b.expiry_date <= CURRENT_DATE + INTERVAL '90 days'
+      JOIN tenants t ON t.tenant_id = b.tenant_id
+      WHERE b.tenant_id = $1
+      AND b.expiry_date <= CURRENT_DATE + (t.expiry_alert_days * INTERVAL '1 day')
       AND b.quantity_on_hand > 0
+      ORDER BY b.expiry_date ASC
     `, [tenantId]);
     return res.json({ success: true, message: 'Expiry alerts retrieved', data: result.rows });
   } catch (error) {

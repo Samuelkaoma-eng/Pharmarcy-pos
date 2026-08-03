@@ -79,6 +79,8 @@ controlHubRouter.use(authenticate, controlHubOnly);
 controlHubRouter.get('/tenants', controlHubController.getTenants);
 controlHubRouter.get('/tenants/:id', controlHubController.getTenant);
 controlHubRouter.put('/tenants/:id/status', controlHubController.updateTenantStatus);
+controlHubRouter.get('/tenants/:id/settings', controlHubController.getTenantSettings);
+controlHubRouter.put('/tenants/:id/settings', controlHubController.updateTenantSettings);
 controlHubRouter.get('/onboarding', controlHubController.getOnboarding);
 app.use('/api/controlhub', controlHubRouter);
 

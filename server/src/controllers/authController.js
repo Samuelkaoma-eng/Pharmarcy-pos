@@ -34,6 +34,17 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    // A pharmacy that has registered but not yet been approved must not be able
+    // to trade, so its staff cannot sign in until the ControlHub activates it.
+    const tenantRes = await db.query('SELECT status, name FROM tenants WHERE tenant_id = $1', [user.tenant_id]);
+    const tenant = tenantRes.rows[0];
+
+    if (!tenant || tenant.status !== 'ACTIVE') {
+      return res.status(403).json({
+        error: 'This pharmacy is not active yet. Sign-in opens once the application has been approved.'
+      });
+    }
+
     const payload = { userId: user.user_id, tenantId: user.tenant_id, role: user.role, username: user.username };
     const token = generateToken(payload);
     const refreshToken = generateRefreshToken(payload);

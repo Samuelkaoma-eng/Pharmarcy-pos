@@ -30,7 +30,14 @@ exports.getConfig = async (req, res) => {
   try {
     const { tenantId } = req.user;
     if (db.isDbAvailable()) {
-      const result = await db.query('SELECT name, theme_color, logo_url, currency_symbol, address, phone FROM tenants WHERE tenant_id = $1', [tenantId]);
+      // Branding is the pharmacy's own; the operational settings below are
+      // read-only here and only the ControlHub can change them.
+      const result = await db.query(
+        `SELECT name, theme_color, logo_url, currency_symbol, address, phone,
+                expiry_alert_days, low_stock_alerts, require_customer_on_sale
+         FROM tenants WHERE tenant_id = $1`,
+        [tenantId]
+      );
       return res.json({ message: 'Tenant config retrieved', data: result.rows[0] });
     }
     res.json({ message: 'Tenant config retrieved (mock)', data: MOCK_CONFIG });
