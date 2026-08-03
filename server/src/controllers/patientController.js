@@ -23,6 +23,7 @@ exports.getPatients = async (req, res) => {
     
     res.json({ message: 'Patients retrieved (mock)', data: MOCK_PATIENTS });
   } catch (error) {
+    console.error('Patient controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -47,6 +48,7 @@ exports.getPatient = async (req, res) => {
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     res.json({ message: 'Patient retrieved (mock)', data: patient });
   } catch (error) {
+    console.error('Patient controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -67,6 +69,7 @@ exports.createPatient = async (req, res) => {
     
     res.status(201).json({ message: 'Patient registered (mock)', data: { customer_id: 'c-new', ...req.body } });
   } catch (error) {
+    console.error('Patient controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -87,6 +90,7 @@ exports.updatePatient = async (req, res) => {
     
     res.json({ message: 'Patient updated (mock)', data: { customer_id: id, name, phone, email, address } });
   } catch (error) {
+    console.error('Patient controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

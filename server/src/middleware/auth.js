@@ -24,7 +24,8 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
+    // An unreadable token is an ordinary client condition, not a server fault.
     return res.status(401).json({ error: 'Unauthorized, invalid or expired token' });
   }
 };

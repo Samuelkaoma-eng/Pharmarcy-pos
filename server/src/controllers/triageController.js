@@ -23,6 +23,7 @@ exports.getQueue = async (req, res) => {
     
     res.json({ message: 'Queue retrieved (mock)', data: MOCK_QUEUE });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -43,6 +44,7 @@ exports.getStats = async (req, res) => {
     
     res.json({ message: 'Stats retrieved (mock)', data: [{ status: 'WAITING', count: 1 }, { status: 'COMPLETED', count: 1 }] });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -78,6 +80,7 @@ exports.createVisit = async (req, res) => {
     
     res.status(201).json({ message: 'Visit created (mock)', data: { visit_id: 'v-new', queue_number: 3, status: 'WAITING' } });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -95,6 +98,7 @@ exports.updateStatus = async (req, res) => {
     
     res.json({ message: 'Status updated (mock)', data: { visit_id: id, status } });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -112,6 +116,7 @@ exports.assignDoctor = async (req, res) => {
     
     res.json({ message: 'Doctor assigned (mock)', data: { visit_id: id, doctor_id: doctorId, status: 'IN_PROGRESS' } });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -136,6 +141,7 @@ exports.recordVitals = async (req, res) => {
     
     res.json({ message: 'Vitals recorded (mock)', data: { vitals_id: 'vitals-new', ...req.body } });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -160,6 +166,7 @@ exports.getVisit = async (req, res) => {
     
     res.json({ message: 'Visit retrieved (mock)', data: { visit_id: id, status: 'WAITING' } });
   } catch (error) {
+    console.error('Triage controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

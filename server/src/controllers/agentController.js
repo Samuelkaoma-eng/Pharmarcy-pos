@@ -73,6 +73,7 @@ exports.query = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Agent controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

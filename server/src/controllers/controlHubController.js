@@ -1,7 +1,9 @@
 const db = require('../config/db');
 
+// Offline fallback used only when PostgreSQL is unreachable, so the ControlHub
+// screens still render during a demo. IDs mirror the seeded tenant.
 const MOCK_TENANTS = [
-  { tenant_id: 't1000000-0000-0000-0000-000000000001', name: 'Lusaka Central Pharmacy', status: 'ACTIVE', users_count: 3 }
+  { tenant_id: '11111111-1111-1111-1111-111111111111', name: 'Central Care Pharmacy', status: 'ACTIVE', users_count: 3 }
 ];
 
 exports.getTenants = async (req, res) => {
@@ -15,6 +17,7 @@ exports.getTenants = async (req, res) => {
     }
     res.json({ message: 'Tenants retrieved (mock)', data: MOCK_TENANTS });
   } catch (error) {
+    console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -31,6 +34,7 @@ exports.getTenant = async (req, res) => {
     if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
     res.json({ message: 'Tenant retrieved (mock)', data: tenant });
   } catch (error) {
+    console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -46,6 +50,7 @@ exports.updateTenantStatus = async (req, res) => {
     }
     res.json({ message: 'Tenant status updated (mock)', data: { tenant_id: id, status } });
   } catch (error) {
+    console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -58,6 +63,7 @@ exports.getOnboarding = async (req, res) => {
     }
     res.json({ message: 'Onboarding applications retrieved (mock)', data: [] });
   } catch (error) {
+    console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -75,6 +81,7 @@ exports.registerTenant = async (req, res) => {
     }
     res.json({ message: 'Tenant registered successfully (mock)', data: { tenant_id: 't-new', name, status: 'REGISTERED' } });
   } catch (error) {
+    console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
