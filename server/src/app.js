@@ -71,6 +71,7 @@ app.post('/api/auth/login', authLimiter, authController.login);
 app.post('/api/controlhub/login', authLimiter, authController.controlHubLogin);
 app.post('/api/auth/refresh', authController.refresh);
 app.post('/api/onboarding/register', controlHubController.registerTenant);
+app.get('/api/tenants/directory', tenantController.getDirectory);
 
 // ControlHub Routes (SuperAdmin only)
 const controlHubRouter = express.Router();

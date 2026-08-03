@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { post } from '../api/client';
+import { get, post } from '../api/client';
 
 export default function Login() {
   const [role, setRole] = useState('Admin');
@@ -9,9 +9,22 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pharmacies, setPharmacies] = useState([]);
+  const [tenantId, setTenantId] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Usernames are only unique within a pharmacy, so staff pick theirs first.
+  useEffect(() => {
+    let active = true;
+    get('tenants/directory').then(res => {
+      if (!active || !res?.data) return;
+      setPharmacies(res.data);
+      if (res.data.length > 0) setTenantId(res.data[0].tenant_id);
+    });
+    return () => { active = false; };
+  }, []);
 
   const handleRoleSelect = (r) => {
     setRole(r);
@@ -26,7 +39,7 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await post('auth/login', { username, password });
+      const res = await post('auth/login', { username, password, tenantId });
       if (res?.data?.token) {
         login(res.data.user || { username, role }, res.data.token);
         navigate('/dashboard');
@@ -51,7 +64,7 @@ export default function Login() {
       <div className="login-card">
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#3b82f6', marginBottom: '6px' }}>Pharmacy POS</h2>
-          <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Central Care Pharmacy • Staff Portal</p>
+          <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Staff Portal</p>
         </div>
 
         {error && (
@@ -69,6 +82,21 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleLoginSubmit}>
+          {pharmacies.length > 0 && (
+            <div>
+              <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Pharmacy:</label>
+              <select
+                className="input-field"
+                value={tenantId}
+                onChange={e => setTenantId(e.target.value)}
+              >
+                {pharmacies.map(p => (
+                  <option key={p.tenant_id} value={p.tenant_id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Username:</label>
             <input 

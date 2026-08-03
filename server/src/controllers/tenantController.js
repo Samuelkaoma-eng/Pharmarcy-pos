@@ -7,6 +7,25 @@ const MOCK_CONFIG = {
   address: '123 Cairo Road, Lusaka'
 };
 
+// Public list backing the pharmacy picker on the staff login screen. Staff need
+// to name their pharmacy before signing in, because usernames are only unique
+// within a tenant. Only the id and display name are exposed, and the platform
+// tenant is withheld since nobody signs in to it from the staff portal.
+exports.getDirectory = async (req, res) => {
+  try {
+    if (db.isDbAvailable()) {
+      const result = await db.query(
+        "SELECT tenant_id, name FROM tenants WHERE status = 'ACTIVE' AND license_number <> 'PLATFORM-000' ORDER BY name ASC"
+      );
+      return res.json({ message: 'Pharmacy directory retrieved', data: result.rows });
+    }
+    res.json({ message: 'Pharmacy directory retrieved (mock)', data: [] });
+  } catch (error) {
+    console.error('Tenant controller error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 exports.getConfig = async (req, res) => {
   try {
     const { tenantId } = req.user;
@@ -16,6 +35,7 @@ exports.getConfig = async (req, res) => {
     }
     res.json({ message: 'Tenant config retrieved (mock)', data: MOCK_CONFIG });
   } catch (error) {
+    console.error('Tenant controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -34,6 +54,7 @@ exports.updateConfig = async (req, res) => {
     }
     res.json({ message: 'Tenant config updated (mock)', data: { ...MOCK_CONFIG, name, theme_color } });
   } catch (error) {
+    console.error('Tenant controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

@@ -1,17 +1,27 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
-const { generateToken, generateRefreshToken, JWT_SECRET, REFRESH_SECRET } = require('../middleware/auth');
+const { generateToken, generateRefreshToken, REFRESH_SECRET } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, tenantId } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    // Usernames are only unique per tenant, so an unscoped lookup could match
+    // several tenants. Scope when the caller names a tenant, otherwise require
+    // one as soon as the username is ambiguous.
+    const result = tenantId
+      ? await db.query('SELECT * FROM users WHERE username = $1 AND tenant_id = $2', [username, tenantId])
+      : await db.query('SELECT * FROM users WHERE username = $1', [username]);
+
+    if (result.rows.length > 1) {
+      return res.status(400).json({ error: 'Username exists in multiple pharmacies. Please supply tenantId.' });
+    }
+
     const user = result.rows[0];
 
     if (!user) {
@@ -57,14 +67,11 @@ exports.controlHubLogin = async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    // ControlHub is platform-wide, so only a real SuperAdmin may enter. A tenant
+    // Admin must never be promoted here: that would hand one pharmacy's
+    // administrator authority over every other tenant on the platform.
     const result = await db.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'SuperAdmin']);
-    let user = result.rows[0];
-
-    // Fallback check for admin user acting as platform admin
-    if (!user) {
-      const adminRes = await db.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'Admin']);
-      user = adminRes.rows[0];
-    }
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid ControlHub credentials' });
@@ -105,7 +112,7 @@ exports.refresh = async (req, res) => {
       message: 'Token refreshed',
       data: { token: generateToken(payload) }
     });
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
 };

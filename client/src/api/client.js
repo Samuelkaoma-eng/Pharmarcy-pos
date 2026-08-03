@@ -2,7 +2,8 @@ export const BASE_URL = 'http://localhost:5000/api';
 
 export const getHeaders = () => {
   const token = localStorage.getItem('pos_auth_token');
-  const headers = { 'Content-Type': 'application/json', 'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' };
+  // Tenant is carried inside the signed token, so no tenant header is sent.
+  const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
 };
