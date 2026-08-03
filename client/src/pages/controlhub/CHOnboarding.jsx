@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { Check, X, FileText, ShieldCheck, Clock, ChevronDown } from 'lucide-react';
-import { get, put, patch } from '../../api/client';
+import { Check, X, FileText, ShieldCheck, Clock, ChevronDown, Eye } from 'lucide-react';
+import { get, put, patch, openAuthedFile } from '../../api/client';
 
 const EASE = [0.23, 1, 0.32, 1];
 
+// The document set ZAMRA requires to license a retail pharmacy in Zambia.
 const DOC_LABELS = {
-  PHARMACY_LICENCE: 'Pharmacy licence',
-  OWNER_ID: 'Owner identification',
-  PREMISES_INSPECTION: 'Premises inspection'
+  PACRA_CERTIFICATE: 'PACRA certificate of incorporation',
+  TPIN_CERTIFICATE: 'ZRA TPIN certificate',
+  PHARMACIST_PRACTISING: 'HPCZ practising certificate',
+  PHARMACIST_ID: 'Pharmacist identification',
+  PREMISES_PROOF: 'Premises ownership or lease',
+  PREMISES_FLOOR_PLAN: 'Premises floor plan',
+  ZAMRA_INSPECTION: 'ZAMRA pre-licensing inspection'
 };
 
-function DocumentRow({ doc, onReview, busy }) {
+function DocumentRow({ doc, onReview, onView, busy }) {
   const tone =
     doc.status === 'VERIFIED' ? 'badge-green' : doc.status === 'REJECTED' ? 'badge-red' : 'badge-yellow';
 
@@ -34,6 +39,16 @@ function DocumentRow({ doc, onReview, busy }) {
 
       <div className="doc-row-actions">
         <span className={`badge ${tone}`}>{doc.status}</span>
+        {/* Verifying paperwork you cannot open is not a review. */}
+        <button
+          className="btn btn-secondary"
+          disabled={!doc.stored_path}
+          title={doc.stored_path ? 'Open the document' : 'No file was uploaded for this document'}
+          onClick={() => onView(doc)}
+          aria-label={`Open ${doc.file_name}`}
+        >
+          <Eye size={14} />
+        </button>
         <button
           className="btn btn-secondary"
           disabled={busy || doc.status === 'VERIFIED'}
@@ -86,6 +101,11 @@ function ApplicationCard({ app, onActivated }) {
       });
     }
     setBusy(false);
+  };
+
+  const handleView = async (doc) => {
+    const res = await openAuthedFile(`controlhub/documents/${doc.document_id}/file`);
+    if (res?.error) toast.error('Could not open the document', { description: res.error });
   };
 
   const handleActivate = async () => {
@@ -143,7 +163,13 @@ function ApplicationCard({ app, onActivated }) {
               {documents === null && <p className="ch-settings-loading">Loading documents…</p>}
               {documents?.length === 0 && <p className="ch-settings-loading">No documents submitted.</p>}
               {documents?.map((doc) => (
-                <DocumentRow key={doc.document_id} doc={doc} onReview={handleReview} busy={busy} />
+                <DocumentRow
+                  key={doc.document_id}
+                  doc={doc}
+                  onReview={handleReview}
+                  onView={handleView}
+                  busy={busy}
+                />
               ))}
             </div>
           </motion.div>
@@ -154,9 +180,14 @@ function ApplicationCard({ app, onActivated }) {
         {readiness && (
           <span className="app-readiness">
             {readiness.ready_to_activate ? (
-              <><ShieldCheck size={14} /> All {readiness.total} documents verified</>
+              <><ShieldCheck size={14} /> All {readiness.required} required documents verified</>
             ) : (
-              <><Clock size={14} /> {readiness.pending} of {readiness.total} still pending</>
+              <>
+                <Clock size={14} />
+                {readiness.missing?.length > 0
+                  ? `${readiness.missing.length} of ${readiness.required} required documents outstanding`
+                  : `${readiness.pending} of ${readiness.total} still pending`}
+              </>
             )}
           </span>
         )}

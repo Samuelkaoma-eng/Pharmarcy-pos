@@ -81,4 +81,21 @@ export const patch = async (endpoint, data) => {
   }
 };
 
-export const api = { get, post, put, patch };
+// Opens an authenticated file in a new tab. A plain link cannot carry the
+// bearer token, so the bytes are fetched and handed to the browser as a blob.
+export const openAuthedFile = async (endpoint) => {
+  const res = await fetch(formatUrl(endpoint), { headers: getHeaders() });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { error: body.error || `Could not open the file (${res.status})` };
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
+  // Released once the new tab has taken its own reference.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return { ok: true };
+};
+
+export const api = { get, post, put, patch, openAuthedFile };
