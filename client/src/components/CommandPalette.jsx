@@ -45,9 +45,9 @@ export default function CommandPalette({ isOpen, onClose }) {
       <div 
         className="modal-content" 
         onClick={(e) => e.stopPropagation()} 
-        style={{ maxWidth: '600px', padding: '16px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px' }}
+        style={{ maxWidth: '600px', padding: '16px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
           <Search size={20} color="#60a5fa" />
           <input 
             type="text" 
@@ -63,7 +63,7 @@ export default function CommandPalette({ isOpen, onClose }) {
         <div style={{ marginTop: '16px', maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {searchResults.length > 0 && (
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Products Found:</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Products Found:</span>
               {searchResults.map((p) => (
                 <div 
                   key={p.product_id}
@@ -78,7 +78,7 @@ export default function CommandPalette({ isOpen, onClose }) {
           )}
 
           <div style={{ marginTop: '8px' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Navigation:</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Navigation:</span>
             {pages.map((p) => (
               <div 
                 key={p.path}
@@ -88,7 +88,7 @@ export default function CommandPalette({ isOpen, onClose }) {
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <p.icon size={18} color="#60a5fa" />
-                <span style={{ color: '#f8fafc', fontSize: '0.95rem' }}>{p.label}</span>
+                <span style={{ color: 'var(--text)', fontSize: '0.95rem' }}>{p.label}</span>
               </div>
             ))}
           </div>

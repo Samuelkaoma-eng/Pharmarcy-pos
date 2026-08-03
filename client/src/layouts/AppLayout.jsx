@@ -38,7 +38,7 @@ export default function AppLayout() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>PharmaPOS</h2>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Staff'}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Staff'}</span>
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item) => {
@@ -75,7 +75,7 @@ export default function AppLayout() {
           </div>
 
           <div className="user-info">
-            <span style={{ fontWeight: '500', color: '#f8fafc' }}>{user?.full_name || user?.username || 'Staff User'}</span>
+            <span style={{ fontWeight: '500', color: 'var(--text)' }}>{user?.full_name || user?.username || 'Staff User'}</span>
             <button onClick={handleLogout} className="logout-btn" title="Logout">
               <LogOut size={16} />
             </button>

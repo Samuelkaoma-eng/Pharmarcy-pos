@@ -80,8 +80,8 @@ export default function Prescriptions() {
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Prescription Verification & Dispensing</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Controlled Substance Tracking and Pharmacist Verification</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Prescription Verification & Dispensing</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>Controlled Substance Tracking and Pharmacist Verification</p>
         </div>
         <button className="btn btn-success" onClick={() => setShowNewRxModal(true)}>
           <Plus size={18} /> Issue New Prescription
@@ -89,7 +89,7 @@ export default function Prescriptions() {
       </div>
 
       {/* FILTER TABS */}
-      <div style={{ background: '#1e293b', padding: '12px 16px', borderRadius: '12px', display: 'flex', gap: '8px' }}>
+      <div style={{ background: 'var(--surface)', padding: '12px 16px', borderRadius: '12px', display: 'flex', gap: '8px' }}>
         {['ALL', 'PENDING', 'VERIFIED', 'DISPENSED'].map(tab => (
           <button 
             key={tab} 
@@ -103,7 +103,7 @@ export default function Prescriptions() {
       </div>
 
       {/* PRESCRIPTIONS TABLE */}
-      <div style={{ background: '#1e293b', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table className="cart-table">
           <thead>
             <tr>
@@ -120,13 +120,13 @@ export default function Prescriptions() {
             {prescriptions.map(p => (
               <tr key={p.prescription_id}>
                 <td style={{ fontFamily: 'monospace', fontWeight: '600', color: '#60a5fa' }}>{p.rx_number || 'RX-2026-9041'}</td>
-                <td style={{ fontWeight: '600', color: '#f8fafc' }}>{p.patient_name}</td>
+                <td style={{ fontWeight: '600', color: 'var(--text)' }}>{p.patient_name}</td>
                 <td>{p.doctor_name}</td>
                 <td>
                   <div style={{ fontWeight: '500' }}>{p.product_name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{p.dosage}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>{p.dosage}</div>
                 </td>
-                <td style={{ color: '#94a3b8' }}>{p.valid_until}</td>
+                <td style={{ color: 'var(--text-2)' }}>{p.valid_until}</td>
                 <td>
                   {p.status === 'VERIFIED' && <span className="badge badge-green">VERIFIED</span>}
                   {p.status === 'PENDING' && <span className="badge badge-yellow">PENDING REVIEW</span>}
@@ -156,19 +156,19 @@ export default function Prescriptions() {
       <Modal isOpen={showNewRxModal} onClose={() => setShowNewRxModal(false)} title="Issue New Doctor Prescription">
         <form onSubmit={handleNewRxSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Prescribing Doctor:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Prescribing Doctor:</label>
             <input type="text" className="input-field" required value={rxForm.doctor_name} onChange={(e) => setRxForm({ ...rxForm, doctor_name: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Patient Name:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Patient Name:</label>
             <input type="text" className="input-field" required value={rxForm.patient_name} onChange={(e) => setRxForm({ ...rxForm, patient_name: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Medication Name:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Medication Name:</label>
             <input type="text" className="input-field" required placeholder="e.g. Amoxicillin 250mg" value={rxForm.product_name} onChange={(e) => setRxForm({ ...rxForm, product_name: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Dosage Instructions:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Dosage Instructions:</label>
             <input type="text" className="input-field" required placeholder="e.g. Take 1 capsule 3 times daily for 7 days" value={rxForm.dosage_instructions} onChange={(e) => setRxForm({ ...rxForm, dosage_instructions: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>

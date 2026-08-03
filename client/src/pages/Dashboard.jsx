@@ -65,8 +65,8 @@ export default function Dashboard() {
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Dashboard Overview</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>{pharmacyName} • Real-Time Operations</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Dashboard Overview</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>{pharmacyName} • Real-Time Operations</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn btn-success" onClick={() => navigate('/pos')}>
@@ -86,25 +86,25 @@ export default function Dashboard() {
       >
         <motion.div className="stat-card" variants={tile}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Today's Total Sales</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Today's Total Sales</span>
             <div style={{ background: 'rgba(34, 197, 94, 0.2)', padding: '8px', borderRadius: '10px' }}><DollarSign size={20} color="#4ade80" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#4ade80' }}>{stats.todaySales}</h2>
-          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Updated live from transactions</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Updated live from transactions</span>
         </motion.div>
 
         <motion.div className="stat-card" variants={tile}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Total Products in Stock</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Total Products in Stock</span>
             <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '8px', borderRadius: '10px' }}><Package size={20} color="#60a5fa" /></div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f8fafc' }}>{stats.totalItems}</h2>
-          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Active inventory items</span>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: 'var(--text)' }}>{stats.totalItems}</h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Active inventory items</span>
         </motion.div>
 
         <motion.div className="stat-card" variants={tile} onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Low Stock Alerts</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Low Stock Alerts</span>
             <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '8px', borderRadius: '10px' }}><AlertTriangle size={20} color="#f87171" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f87171' }}>{stats.lowStockCount}</h2>
@@ -113,7 +113,7 @@ export default function Dashboard() {
 
         <motion.div className="stat-card" variants={tile} onClick={() => navigate('/triage')} style={{ cursor: 'pointer' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>Patients Waiting in Queue</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Patients Waiting in Queue</span>
             <div style={{ background: 'rgba(234, 179, 8, 0.2)', padding: '8px', borderRadius: '10px' }}><Clock size={20} color="#facc15" /></div>
           </div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#facc15' }}>{stats.waitingPatients}</h2>
@@ -121,8 +121,8 @@ export default function Dashboard() {
         </motion.div>
       </motion.div>
 
-      <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '20px' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '14px', color: '#f8fafc' }}>Quick Operations</h3>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '14px', color: 'var(--text)' }}>Quick Operations</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           <button className="btn" style={{ background: '#3b82f6', justifyContent: 'flex-start' }} onClick={() => navigate('/pos')}>
             <ShoppingCart size={18} /> Open Cashier POS
@@ -140,7 +140,7 @@ export default function Dashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '20px' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: '600' }}>Recent Checkout Sales</h3>
             <button onClick={() => navigate('/sales')} style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.85rem', cursor: 'pointer' }}>View All</button>
@@ -167,7 +167,7 @@ export default function Dashboard() {
           </table>
         </div>
 
-        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '20px' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: '600' }}>Low Stock Inventory Watch</h3>
             <button onClick={() => navigate('/inventory')} style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.85rem', cursor: 'pointer' }}>Manage Stock</button>

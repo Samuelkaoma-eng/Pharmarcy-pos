@@ -136,8 +136,8 @@ export default function Inventory() {
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Inventory Ledger & Stock</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Audit-first stock ledger with batch, expiry, and prescription controls</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Inventory Ledger & Stock</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>Audit-first stock ledger with batch, expiry, and prescription controls</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn btn-success" onClick={() => setShowAddProductModal(true)}>
@@ -149,7 +149,7 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', padding: '12px 16px', borderRadius: '12px', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: '12px 16px', borderRadius: '12px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           {['ALL', 'LOW_STOCK', 'EXPIRING'].map(tab => (
             <button 
@@ -175,7 +175,7 @@ export default function Inventory() {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ paddingLeft: '32px' }}
             />
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+            <Search size={16} color="var(--text-2)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
           </div>
 
           <select 
@@ -193,7 +193,7 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div style={{ background: '#1e293b', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table className="cart-table">
           <thead>
             <tr>
@@ -209,10 +209,10 @@ export default function Inventory() {
           <tbody>
             {filteredProducts.length > 0 ? filteredProducts.map(p => (
               <tr key={p.product_id}>
-                <td style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{p.barcode || 'N/A'}</td>
-                <td style={{ fontWeight: '600', color: '#f8fafc' }}>
+                <td style={{ fontFamily: 'monospace', color: 'var(--text-2)' }}>{p.barcode || 'N/A'}</td>
+                <td style={{ fontWeight: '600', color: 'var(--text)' }}>
                   {p.name}
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Dosage: {p.dosage || '500mg'}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Dosage: {p.dosage || '500mg'}</div>
                 </td>
                 <td><span className="badge badge-blue">{p.category}</span></td>
                 <td style={{ color: '#4ade80', fontWeight: '600' }}>K {parseFloat(p.selling_price).toFixed(2)}</td>
@@ -225,7 +225,7 @@ export default function Inventory() {
                   {p.requires_prescription ? (
                     <span className="badge badge-yellow">Rx Required</span>
                   ) : (
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>OTC Drug</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>OTC Drug</span>
                   )}
                 </td>
                 <td>
@@ -248,7 +248,7 @@ export default function Inventory() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>No products found matching filters.</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)' }}>No products found matching filters.</td></tr>
             )}
           </tbody>
         </table>
@@ -257,16 +257,16 @@ export default function Inventory() {
       <Modal isOpen={showAddProductModal} onClose={() => setShowAddProductModal(false)} title="Add New Medication Product">
         <form onSubmit={handleAddProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Product Name:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Product Name:</label>
             <input type="text" className="input-field" required placeholder="e.g. Amoxicillin 500mg" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Barcode / SKU:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Barcode / SKU:</label>
             <input type="text" className="input-field" placeholder="e.g. 600123456709" value={productForm.barcode} onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Category:</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Category:</label>
               <select className="input-field" value={productForm.category} onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}>
                 <option value="Pain Relief">Pain Relief</option>
                 <option value="Antibiotic">Antibiotic</option>
@@ -276,17 +276,17 @@ export default function Inventory() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Dosage:</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Dosage:</label>
               <input type="text" className="input-field" placeholder="500mg" value={productForm.dosage} onChange={(e) => setProductForm({ ...productForm, dosage: e.target.value })} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Cost Price (K):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Cost Price (K):</label>
               <input type="number" className="input-field" value={productForm.cost_price} onChange={(e) => setProductForm({ ...productForm, cost_price: e.target.value })} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Selling Price (K):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Selling Price (K):</label>
               <input type="number" className="input-field" value={productForm.selling_price} onChange={(e) => setProductForm({ ...productForm, selling_price: e.target.value })} />
             </div>
           </div>
@@ -304,16 +304,16 @@ export default function Inventory() {
       <Modal isOpen={showReceiveStockModal} onClose={() => setShowReceiveStockModal(false)} title={`Receive Stock - ${selectedProduct?.name}`}>
         <form onSubmit={handleReceiveStockSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Batch Number:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Batch Number:</label>
             <input type="text" className="input-field" required placeholder="e.g. BATCH-2026-X" value={receiveForm.batch_number} onChange={(e) => setReceiveForm({ ...receiveForm, batch_number: e.target.value })} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Quantity Received:</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Quantity Received:</label>
               <input type="number" className="input-field" required min="1" value={receiveForm.quantity} onChange={(e) => setReceiveForm({ ...receiveForm, quantity: e.target.value })} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Expiry Date:</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Expiry Date:</label>
               <input type="date" className="input-field" required value={receiveForm.expiry_date} onChange={(e) => setReceiveForm({ ...receiveForm, expiry_date: e.target.value })} />
             </div>
           </div>
@@ -327,11 +327,11 @@ export default function Inventory() {
       <Modal isOpen={showDispenseModal} onClose={() => setShowDispenseModal(false)} title={`Manual Dispense - ${selectedProduct?.name}`}>
         <form onSubmit={handleDispenseStockSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Quantity to Dispense:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Quantity to Dispense:</label>
             <input type="number" className="input-field" required min="1" max={selectedProduct?.quantity_on_hand || 100} value={dispenseForm.quantity} onChange={(e) => setDispenseForm({ ...dispenseForm, quantity: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Notes / Reason:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Notes / Reason:</label>
             <input type="text" className="input-field" value={dispenseForm.notes} onChange={(e) => setDispenseForm({ ...dispenseForm, notes: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>

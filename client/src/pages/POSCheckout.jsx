@@ -136,7 +136,7 @@ export default function POSCheckout() {
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '12px' }}>
-                <span className="stock-text" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Stock: {p.quantity_on_hand || 100}</span>
+                <span className="stock-text" style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Stock: {p.quantity_on_hand || 100}</span>
                 <span className="price-text" style={{ color: '#4ade80', fontWeight: '700', fontSize: '1.1rem' }}>
                   K <NumberFlow value={parseFloat(p.selling_price)} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                 </span>
@@ -154,7 +154,7 @@ export default function POSCheckout() {
           </h3>
 
           {cart.length === 0 ? (
-            <p style={{ color: '#64748b', textAlign: 'center', margin: '40px 0' }}>Scan barcode or click items to add to cart.</p>
+            <p style={{ color: 'var(--text-3)', textAlign: 'center', margin: '40px 0' }}>Scan barcode or click items to add to cart.</p>
           ) : (
             <table className="cart-table">
               <thead>
@@ -185,7 +185,7 @@ export default function POSCheckout() {
         <div>
           {cart.some(i => i.requires_prescription) && (
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Prescription ID (Required):</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>Prescription ID (Required):</label>
               <input 
                 type="text" 
                 className="input-field" 
@@ -235,10 +235,10 @@ export default function POSCheckout() {
       {/* RECEIPT MODAL */}
       {showReceipt && (
         <Modal isOpen={showReceipt} onClose={() => setShowReceipt(false)} title="Thermal Receipt Preview">
-          <div style={{ textAlign: 'center', borderBottom: '1px dashed #64748b', paddingBottom: '12px', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--text-3)', paddingBottom: '12px', marginBottom: '12px' }}>
             <h3 style={{ color: '#fff' }}>CENTRAL CARE PHARMACY</h3>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>123 Great East Road, Lusaka</p>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Receipt #: {receiptData?.receipt_number || 'REC-20260802-1001'}</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>123 Great East Road, Lusaka</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Receipt #: {receiptData?.receipt_number || 'REC-20260802-1001'}</p>
           </div>
 
           <div className="summary-card" style={{ marginBottom: '16px' }}>

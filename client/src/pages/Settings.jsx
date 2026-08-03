@@ -54,20 +54,20 @@ export default function Settings() {
   return (
     <div style={{ padding: '24px', maxWidth: '650px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Palette color="#3b82f6" /> Site Customizer & Settings
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Customize pharmacy branding, theme colors, currency, and branch contact details.</p>
+        <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>Customize pharmacy branding, theme colors, currency, and branch contact details.</p>
       </div>
 
-      <form onSubmit={handleSave} style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSave} style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '24px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
-          <label style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Pharmacy Site Name:</label>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Pharmacy Site Name:</label>
           <input type="text" className="input-field" value={config.name} onChange={(e) => setConfig({ ...config, name: e.target.value })} />
         </div>
 
         <div>
-          <label style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Primary Theme Color Preset:</label>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Primary Theme Color Preset:</label>
           <div style={{ display: 'flex', gap: '12px' }}>
             {['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'].map(color => (
               <div 
@@ -93,17 +93,17 @@ export default function Settings() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Currency Symbol:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Currency Symbol:</label>
             <input type="text" className="input-field" value={config.currency_symbol} onChange={(e) => setConfig({ ...config, currency_symbol: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Phone Number:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Phone Number:</label>
             <input type="text" className="input-field" value={config.phone} onChange={(e) => setConfig({ ...config, phone: e.target.value })} />
           </div>
         </div>
 
         <div>
-          <label style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Pharmacy Physical Address:</label>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Pharmacy Physical Address:</label>
           <input type="text" className="input-field" value={config.address} onChange={(e) => setConfig({ ...config, address: e.target.value })} />
         </div>
 
@@ -121,10 +121,10 @@ export default function Settings() {
         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1], delay: 0.06 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <Lock size={16} color="#94a3b8" />
+          <Lock size={16} color="var(--text-2)" />
           <h3 style={{ fontSize: '1rem', fontWeight: 650 }}>Platform-managed settings</h3>
         </div>
-        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+        <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', marginBottom: '16px' }}>
           These are set by platform staff in ControlHub. Contact them to request a change.
         </p>
 

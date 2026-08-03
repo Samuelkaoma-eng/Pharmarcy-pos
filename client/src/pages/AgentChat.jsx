@@ -33,8 +33,8 @@ export default function AgentChat() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <Bot size={28} color="#60a5fa" />
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f8fafc' }}>Pharmacy Workflow Assistant</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Natural-language support with confirmation gates for stock and sales actions</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text)' }}>Pharmacy Workflow Assistant</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>Natural-language support with confirmation gates for stock and sales actions</p>
         </div>
       </div>
 
@@ -53,9 +53,9 @@ export default function AgentChat() {
         </button>
       </div>
 
-      <div style={{ flex: 1, background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {messages.map((m, idx) => (
-          <div key={idx} style={{ alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start', background: m.sender === 'user' ? '#3b82f6' : '#334155', color: '#fff', padding: '12px 16px', borderRadius: '14px', maxWidth: '75%', fontSize: '0.95rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+          <div key={idx} style={{ alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start', background: m.sender === 'user' ? '#3b82f6' : 'var(--surface-3)', color: '#fff', padding: '12px 16px', borderRadius: '14px', maxWidth: '75%', fontSize: '0.95rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
             {m.text}
           </div>
         ))}

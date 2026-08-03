@@ -35,12 +35,12 @@ export default function SalesHistory() {
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Sales History & Receipts</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Transaction Log and Thermal Receipt Reprints</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Sales History & Receipts</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>Transaction Log and Thermal Receipt Reprints</p>
         </div>
       </div>
 
-      <div style={{ background: '#1e293b', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px' }}>
+      <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: '12px', display: 'flex', gap: '12px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <input 
             type="text" 
@@ -50,11 +50,11 @@ export default function SalesHistory() {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ paddingLeft: '36px' }}
           />
-          <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+          <Search size={18} color="var(--text-2)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
         </div>
       </div>
 
-      <div style={{ background: '#1e293b', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <table className="cart-table">
           <thead>
             <tr>
@@ -89,10 +89,10 @@ export default function SalesHistory() {
 
       {selectedSale && (
         <Modal isOpen={Boolean(selectedSale)} onClose={() => setSelectedSale(null)} title={`Receipt - ${selectedSale.receipt_number}`}>
-          <div style={{ textAlign: 'center', borderBottom: '1px dashed #64748b', paddingBottom: '12px', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--text-3)', paddingBottom: '12px', marginBottom: '12px' }}>
             <h3 style={{ color: '#fff' }}>CENTRAL CARE PHARMACY</h3>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Receipt #: {selectedSale.receipt_number}</p>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Date: {new Date(selectedSale.date_time).toLocaleString()}</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Receipt #: {selectedSale.receipt_number}</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Date: {new Date(selectedSale.date_time).toLocaleString()}</p>
           </div>
 
           <table className="cart-table" style={{ marginBottom: '12px' }}>

@@ -92,8 +92,8 @@ export default function TriageQueue() {
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Doctor Triage & Patient Queue</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Triage Vitals, Doctor Assignment, and Consultation Queue</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Doctor Triage & Patient Queue</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>Triage Vitals, Doctor Assignment, and Consultation Queue</p>
         </div>
         <button className="btn btn-success" onClick={() => setShowNewVisitModal(true)}>
           <Plus size={18} /> New Walk-In Visit
@@ -103,19 +103,19 @@ export default function TriageQueue() {
       {/* STAT CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
         <div className="stat-card">
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Waiting in Queue</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Waiting in Queue</span>
           <h2 style={{ fontSize: '1.6rem', color: '#facc15', marginTop: '6px' }}>
             {visits.filter(v => v.status === 'WAITING').length}
           </h2>
         </div>
         <div className="stat-card">
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>In Doctor Consultation</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>In Doctor Consultation</span>
           <h2 style={{ fontSize: '1.6rem', color: '#60a5fa', marginTop: '6px' }}>
             {visits.filter(v => v.status === 'IN_PROGRESS').length}
           </h2>
         </div>
         <div className="stat-card">
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Completed Today</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Completed Today</span>
           <h2 style={{ fontSize: '1.6rem', color: '#4ade80', marginTop: '6px' }}>
             {visits.filter(v => v.status === 'COMPLETED').length}
           </h2>
@@ -123,19 +123,19 @@ export default function TriageQueue() {
       </div>
 
       {/* VISITS QUEUE LIST */}
-      <div style={{ background: '#1e293b', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', padding: '20px' }}>
-        <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', color: '#f8fafc' }}>Active Patient Walk-In Queue</h3>
+      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', padding: '20px' }}>
+        <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', color: 'var(--text)' }}>Active Patient Walk-In Queue</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {visits.map(v => (
-            <div key={v.visit_id} style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={v.visit_id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ background: '#3b82f6', color: '#fff', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '1.1rem' }}>
                   #{v.queue_number}
                 </div>
                 <div>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#f8fafc' }}>{v.patient_name}</h4>
-                  <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Assigned Doctor: <span style={{ color: '#60a5fa' }}>{v.doctor_name}</span></p>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Reason: {v.reason}</p>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: 'var(--text)' }}>{v.patient_name}</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Assigned Doctor: <span style={{ color: '#60a5fa' }}>{v.doctor_name}</span></p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>Reason: {v.reason}</p>
                 </div>
               </div>
 
@@ -175,18 +175,18 @@ export default function TriageQueue() {
       <Modal isOpen={showNewVisitModal} onClose={() => setShowNewVisitModal(false)} title="New Triage Walk-In Visit">
         <form onSubmit={handleNewVisitSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Patient Name:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Patient Name:</label>
             <input type="text" className="input-field" required value={visitForm.patient_name} onChange={(e) => setVisitForm({ ...visitForm, patient_name: e.target.value })} />
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Assigned Doctor:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Assigned Doctor:</label>
             <select className="input-field" value={visitForm.doctor_name} onChange={(e) => setVisitForm({ ...visitForm, doctor_name: e.target.value })}>
               <option value="Dr. Martin Phiri">Dr. Martin Phiri (General Medicine)</option>
               <option value="Dr. Sarah Banda">Dr. Sarah Banda (Pediatrics)</option>
             </select>
           </div>
           <div>
-            <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Chief Complaint / Reason for Visit:</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Chief Complaint / Reason for Visit:</label>
             <input type="text" className="input-field" required placeholder="e.g. Persistent headache and fever" value={visitForm.reason} onChange={(e) => setVisitForm({ ...visitForm, reason: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
@@ -201,21 +201,21 @@ export default function TriageQueue() {
         <form onSubmit={handleVitalsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Blood Pressure (BP):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Blood Pressure (BP):</label>
               <input type="text" className="input-field" required placeholder="120/80" value={vitalsForm.bp} onChange={(e) => setVitalsForm({ ...vitalsForm, bp: e.target.value })} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Heart Rate (BPM):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Heart Rate (BPM):</label>
               <input type="text" className="input-field" required placeholder="72" value={vitalsForm.heart_rate} onChange={(e) => setVitalsForm({ ...vitalsForm, heart_rate: e.target.value })} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Temperature (°C):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Temperature (°C):</label>
               <input type="text" className="input-field" required placeholder="37.1" value={vitalsForm.temperature} onChange={(e) => setVitalsForm({ ...vitalsForm, temperature: e.target.value })} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem', color: '#94a3b8' }}>SpO2 Oxygen (%):</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>SpO2 Oxygen (%):</label>
               <input type="text" className="input-field" required placeholder="98%" value={vitalsForm.spo2} onChange={(e) => setVitalsForm({ ...vitalsForm, spo2: e.target.value })} />
             </div>
           </div>

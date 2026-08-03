@@ -138,8 +138,8 @@ export default function CHTenants() {
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Tenant management</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text)' }}>Tenant management</h1>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.9rem', marginTop: '4px' }}>
             Approve pharmacies and set the operational limits they run under.
           </p>
         </div>
@@ -149,7 +149,7 @@ export default function CHTenants() {
       </div>
 
       {!loading && tenants.length === 0 && (
-        <p style={{ color: '#94a3b8' }}>No pharmacies registered yet.</p>
+        <p style={{ color: 'var(--text-2)' }}>No pharmacies registered yet.</p>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
@@ -168,10 +168,10 @@ export default function CHTenants() {
                   {t.status}
                 </span>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{t.address || 'No address on file'}</p>
-              <p style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{t.owner_email}</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>{t.address || 'No address on file'}</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>{t.owner_email}</p>
               {t.users_count !== undefined && (
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '6px' }}>{t.users_count} staff account(s)</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginTop: '6px' }}>{t.users_count} staff account(s)</p>
               )}
             </div>
 
