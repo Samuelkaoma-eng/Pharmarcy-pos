@@ -1,4 +1,8 @@
-export const BASE_URL = 'http://localhost:5000/api';
+// Relative by default so requests go through the Vite dev proxy (and, in a
+// deployment, through whatever serves the client). That keeps the browser on
+// one origin and avoids CORS entirely. Override with VITE_API_URL when the API
+// genuinely lives elsewhere.
+export const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const getHeaders = () => {
   const token = localStorage.getItem('pos_auth_token');

@@ -1,12 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* Set at runtime from the pharmacy's saved branding. The values here are
+     only the fallback used before the tenant config has loaded. */
   --tenant-primary: #3b82f6;
+  --tenant-primary-soft: rgba(59, 130, 246, 0.3);
   --bg-color: #0f172a;
   --card-bg: #1e293b;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --border-color: rgba(255, 255, 255, 0.1);
+
+  /* The built-in CSS easings are too weak to read as intentional. These are
+     the stronger curves used for every transition in the app. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Durations, kept under 300ms for anything the user drives. */
+  --dur-press: 140ms;
+  --dur-hover: 180ms;
+  --dur-panel: 240ms;
+  --dur-drawer: 320ms;
 }
 
 * {
@@ -37,7 +52,6 @@ body {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
 }
 
 .sidebar-header {
@@ -69,18 +83,42 @@ body {
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.2s ease;
+  position: relative;
+  transition: background var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+/* Sidebar navigation is used constantly, so hover stays a colour change with
+   no movement, and only on devices that actually hover. */
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+  }
+}
+
+.nav-item:active {
+  transform: scale(0.98);
 }
 
 .nav-item.active {
-  background: var(--tenant-primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* The active pill is a shared layout element animated by Motion, so the
+   background here stays transparent and the pill sits behind the label. */
+.nav-item.active .nav-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: var(--tenant-primary);
+  box-shadow: 0 4px 12px var(--tenant-primary-soft);
+  z-index: 0;
+}
+
+.nav-item span,
+.nav-item svg {
+  position: relative;
+  z-index: 1;
 }
 
 .main-content {
@@ -106,6 +144,30 @@ body {
   font-size: 1.1rem;
 }
 
+.quick-search-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--dur-hover) ease, color var(--dur-hover) ease;
+}
+
+.quick-search-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+.quick-search-btn kbd {
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: inherit;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -122,7 +184,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: background var(--dur-hover) ease, color var(--dur-hover) ease,
+    border-color var(--dur-hover) ease;
 }
 
 .logout-btn:hover {
@@ -155,7 +218,360 @@ body {
   font-size: 1.75rem;
 }
 
-/* LOGIN */
+/* LANDING */
+.landing { min-height: 100vh; }
+
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 1.08rem;
+  letter-spacing: -0.3px;
+  color: var(--tenant-primary);
+}
+
+.landing-nav-links { display: flex; align-items: center; gap: 10px; }
+.landing-nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: color var(--dur-hover) ease;
+}
+.landing-nav-links a:hover { color: var(--text-primary); }
+.landing-nav-btn { padding: 8px 16px; font-size: 0.85rem; }
+.landing-nav-btn:hover { color: #fff; }
+
+@media (max-width: 720px) {
+  .landing-nav-links a[href^="#"] { display: none; }
+}
+
+.landing-hero {
+  position: relative;
+  padding: clamp(64px, 11vw, 128px) 24px clamp(56px, 9vw, 104px);
+  overflow: hidden;
+  text-align: center;
+}
+
+.landing-hero-glow {
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1100px, 130%);
+  height: 620px;
+  background: radial-gradient(ellipse at center, var(--tenant-primary-soft) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.landing-hero-inner { position: relative; max-width: 54rem; margin: 0 auto; }
+
+.landing-title {
+  font-size: clamp(2.4rem, 6vw, 4.1rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin: 22px 0 18px;
+}
+.landing-title span { color: var(--tenant-primary); }
+
+.landing-lede {
+  font-size: clamp(0.98rem, 1.6vw, 1.12rem);
+  line-height: 1.68;
+  color: var(--text-secondary);
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.landing-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 30px;
+}
+.landing-cta-btn { padding: 12px 22px; text-decoration: none; }
+
+.landing-section { padding: clamp(48px, 8vw, 88px) 24px; max-width: 68rem; margin: 0 auto; }
+
+.landing-section-head { text-align: center; margin-bottom: 42px; }
+.landing-section-head h2 {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.9px;
+  margin-bottom: 10px;
+}
+.landing-section-head p { color: var(--text-secondary); font-size: 0.95rem; }
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.landing-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color var(--dur-hover) ease, transform var(--dur-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .landing-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-2px); }
+}
+
+.landing-card-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--tenant-primary-soft);
+  color: var(--tenant-primary);
+  margin-bottom: 14px;
+}
+.landing-card h3 { font-size: 1rem; font-weight: 650; margin-bottom: 8px; }
+.landing-card p { font-size: 0.88rem; line-height: 1.62; color: var(--text-secondary); }
+
+.landing-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.landing-step {
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  background: rgba(30, 41, 59, 0.4);
+}
+.landing-step-n {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--tenant-primary);
+}
+.landing-step h3 { font-size: 1.05rem; font-weight: 650; margin: 10px 0 6px; }
+.landing-step p { font-size: 0.87rem; line-height: 1.6; color: var(--text-secondary); }
+
+.landing-final {
+  text-align: center;
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  padding: clamp(34px, 6vw, 58px);
+  background: rgba(30, 41, 59, 0.45);
+  color: var(--tenant-primary);
+}
+.landing-final h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  margin: 14px 0 12px;
+  color: var(--text-primary);
+}
+.landing-final p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.68;
+  max-width: 38rem;
+  margin: 0 auto 24px;
+}
+
+.landing-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  max-width: 68rem;
+  margin: 0 auto;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.register-page { min-height: 100vh; }
+.register-brand { display: flex; }
+.register-done { text-align: center; }
+.register-done-icon { color: #4ade80; margin: 0 auto 14px; display: block; }
+
+/* LOGIN — split screen */
+.login-split {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .login-split { grid-template-columns: 1.05fr 1fr; }
+}
+
+.login-panel {
+  display: none;
+  position: relative;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .login-panel { display: flex; }
+}
+
+.login-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.login-panel-scrim { position: absolute; inset: 0; background: rgba(8, 15, 28, 0.55); }
+
+.login-brand,
+.login-panel-body,
+.login-foot { position: relative; z-index: 1; }
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.3px;
+}
+
+.login-eyebrow {
+  display: inline-block;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}
+
+.login-headline {
+  font-size: clamp(2.2rem, 3.4vw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -1.4px;
+  color: #fff;
+  margin: 18px 0 14px;
+}
+
+.login-headline span { color: #60a5fa; }
+
+.login-sub {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  max-width: 27rem;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.login-assurances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 32px;
+  max-width: 30rem;
+}
+
+.assurance-card {
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.assurance-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.assurance-value { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: -0.4px; }
+.assurance-note { font-size: 0.72rem; margin-top: 2px; color: rgba(255, 255, 255, 0.34); }
+
+.login-foot { font-size: 0.75rem; color: rgba(255, 255, 255, 0.32); }
+
+.login-form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--bg-color);
+}
+
+.login-form-wrap { width: 100%; max-width: 26rem; }
+
+.login-mobile-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--tenant-primary);
+}
+
+@media (min-width: 1024px) { .login-mobile-brand { display: none; } }
+
+.login-form-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 34px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+}
+
+.login-title { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.6px; }
+.login-subtitle { font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px; }
+
+.login-error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-form label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.login-submit { width: 100%; padding: 13px; margin-top: 6px; }
+
+.login-alt, .login-legal {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.login-alt { margin-top: 22px; }
+.login-legal { margin-top: 18px; font-size: 0.75rem; }
+.login-alt a, .login-legal a { color: var(--tenant-primary); text-decoration: none; font-weight: 600; }
+.login-alt a:hover, .login-legal a:hover { text-decoration: underline; }
+
 .login-container {
   display: flex;
   align-items: center;
@@ -192,6 +608,7 @@ body {
 
 .role-tabs button {
   flex: 1;
+  position: relative;
   background: transparent;
   border: none;
   color: var(--text-secondary);
@@ -199,14 +616,22 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: color var(--dur-hover) ease;
 }
 
-.role-tabs button.active {
+.role-tabs button.active { color: var(--text-primary); }
+
+/* Shared pill, so switching role slides rather than pops. */
+.role-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
   background: var(--card-bg);
-  color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 0;
 }
+
+.role-label { position: relative; z-index: 1; }
 
 .login-card form {
   display: flex;
@@ -251,12 +676,15 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 20px;
-  transition: transform 0.2s;
+  transition: transform var(--dur-hover) var(--ease-out), border-color var(--dur-hover) ease;
 }
 
-.stat-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255,255,255,0.2);
+/* A dashboard tile is seen constantly, so the lift is small and hover-gated. */
+@media (hover: hover) and (pointer: fine) {
+  .stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.2);
+  }
 }
 
 .stat-card h3 {
@@ -329,22 +757,39 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: transform var(--dur-press) var(--ease-out), filter var(--dur-hover) ease,
+    background var(--dur-hover) ease;
+}
+
+/* Press feedback is the one thing every pressable element must have: it
+   confirms the interface heard the user. Release is slower than press. */
+.btn:active {
+  transform: scale(0.97);
+  transition-duration: 90ms;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-primary {
   background: var(--tenant-primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px var(--tenant-primary-soft);
 }
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
 .btn-success { background: #22c55e; color: white; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
-.btn-success:hover { filter: brightness(1.1); }
-
 .btn-danger { background: #ef4444; color: white; }
 .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border-color); }
-.btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-success:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.15); }
+}
 
 .icon-btn {
   background: transparent;
@@ -370,7 +815,7 @@ body {
   font-size: 0.95rem;
   width: 100%;
   outline: none;
-  transition: all 0.2s;
+  transition: border-color var(--dur-hover) ease, box-shadow var(--dur-hover) ease;
 }
 
 .input-field:focus {
@@ -412,14 +857,24 @@ body {
   justify-content: space-between;
   gap: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform var(--dur-hover) var(--ease-out), border-color var(--dur-hover) ease,
+    box-shadow var(--dur-hover) ease;
   height: 160px;
 }
 
-.product-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--tenant-primary);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+@media (hover: hover) and (pointer: fine) {
+  .product-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--tenant-primary);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  }
+}
+
+/* Adding to the cart is the single most repeated action at the till, so the
+   press must land instantly. */
+.product-card:active {
+  transform: scale(0.985);
+  transition-duration: 90ms;
 }
 
 .stock-text { color: var(--text-secondary); font-size: 0.85rem; }
@@ -453,6 +908,7 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 .qty-btn:hover { background: rgba(255,255,255,0.2); }
+.qty-btn:active { transform: scale(0.92); }
 
 .summary-card {
   background: rgba(0,0,0,0.3);
@@ -491,7 +947,6 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
 }
 
 .modal-content {
@@ -504,7 +959,8 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: slideUp 0.3s ease-out;
+  /* Enter and exit are driven by Motion so they stay interruptible. */
+  transform-origin: center;
 }
 
 .modal-header {
@@ -537,11 +993,16 @@ body {
   width: 60px; height: 60px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 10px 25px var(--tenant-primary-soft);
+  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-hover) ease;
   z-index: 900;
 }
-.floating-chat-btn:hover { transform: scale(1.05); box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5); }
+
+@media (hover: hover) and (pointer: fine) {
+  .floating-chat-btn:hover { transform: scale(1.04); box-shadow: 0 15px 35px var(--tenant-primary-soft); }
+}
+
+.floating-chat-btn:active { transform: scale(0.96); }
 
 .ai-chat-sidebar {
   position: fixed;
@@ -583,9 +1044,11 @@ body {
 .quick-chip {
   background: rgba(255,255,255,0.1); border: 1px solid var(--border-color);
   padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
-  transition: all 0.2s; white-space: nowrap;
+  transition: background var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+  white-space: nowrap;
 }
 .quick-chip:hover { background: rgba(255,255,255,0.2); }
+.quick-chip:active { transform: scale(0.96); }
 
 .agent-chat-page {
   display: flex; flex-direction: column; height: 100%;
@@ -599,6 +1062,68 @@ body {
   background: var(--card-bg); border: 1px solid var(--border-color);
   border-radius: 16px; padding: 24px;
 }
+.ch-tenant-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ch-settings { margin-top: 16px; padding-top: 6px; border-top: 1px solid var(--border-color); }
+.ch-settings-loading { margin-top: 16px; font-size: 0.85rem; color: var(--text-secondary); }
+.ch-days-input { width: 84px; flex-shrink: 0; text-align: center; padding: 8px; }
+
+.platform-settings { display: flex; flex-direction: column; }
+.platform-settings > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.88rem;
+}
+.platform-settings > div:last-child { border-bottom: none; }
+.platform-settings span { color: var(--text-secondary); }
+.platform-settings strong { font-weight: 600; }
+
+/* ControlHub toggle */
+.ch-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.ch-toggle-row:last-of-type { border-bottom: none; }
+.ch-toggle-row p { font-size: 0.88rem; font-weight: 600; }
+.ch-toggle-row small { font-size: 0.78rem; color: var(--text-secondary); display: block; margin-top: 2px; }
+
+.ch-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: rgba(255,255,255,0.16);
+  transition: background var(--dur-hover) ease;
+}
+.ch-switch[data-on='true'] { background: #8b5cf6; }
+.ch-switch span {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform var(--dur-panel) var(--ease-out);
+}
+.ch-switch[data-on='true'] span { transform: translateX(18px); }
+
 .queue-list { display: flex; flex-direction: column; gap: 16px; }
 .queue-card {
   background: var(--card-bg); border: 1px solid var(--border-color);
@@ -607,7 +1132,34 @@ body {
 
 /* ANIMATIONS */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* REDUCED MOTION
+   Fewer and gentler, not zero. Opacity and colour still carry meaning, so
+   they stay; movement and scale are what get dropped. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .stat-card:hover,
+  .product-card:hover,
+  .product-card:active,
+  .btn:active,
+  .nav-item:active,
+  .floating-chat-btn:hover {
+    transform: none;
+  }
+
+  .modal-content {
+    animation: fadeIn 120ms ease;
+  }
+}
 
 /* PRINT */
 @media print {

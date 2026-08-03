@@ -20,17 +20,18 @@ const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth
 
 const app = express();
 
-// 2.6 CORS Allowlist
+// CORS Allowlist
+const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:5173'];
+  : defaultOrigins;
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('CORS origin not allowed'));
+      callback(null, false);
     }
   },
   credentials: true
@@ -38,16 +39,16 @@ app.use(cors({
 
 app.use(express.json());
 
-// 2.7 Rate Limiting
+// Rate Limiting
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { error: 'TOO_MANY_REQUESTS', message: 'Too many login attempts. Please try again in 15 minutes.' }
 });
 
 const generalLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 150,
+  windowMs: 60 * 1000,
+  max: 300,
   message: { error: 'TOO_MANY_REQUESTS', message: 'Rate limit exceeded. Please slow down.' }
 });
 
@@ -56,7 +57,7 @@ app.use('/api', generalLimiter);
 // Init DB Schema & Seed
 initDb();
 
-// 10.3 Health Check with DB Connectivity
+// Health Check
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -66,12 +67,12 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Auth Routes (Rate Limited)
+// Public Routes
+app.get('/api/tenants/directory', tenantController.getDirectory);
 app.post('/api/auth/login', authLimiter, authController.login);
 app.post('/api/controlhub/login', authLimiter, authController.controlHubLogin);
 app.post('/api/auth/refresh', authController.refresh);
 app.post('/api/onboarding/register', controlHubController.registerTenant);
-app.get('/api/tenants/directory', tenantController.getDirectory);
 
 // ControlHub Routes (SuperAdmin only)
 const controlHubRouter = express.Router();

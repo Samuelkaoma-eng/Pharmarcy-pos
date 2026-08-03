@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, ShoppingCart, Package, Users, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search } from 'lucide-react';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuth } from '../context/AuthContext';
 import { Toaster } from 'sonner';
 import AIChatSidebar from '../components/AIChatSidebar';
 import CommandPalette from '../components/CommandPalette';
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, pharmacyName } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
@@ -37,32 +38,44 @@ export default function AppLayout() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>PharmaPOS</h2>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Admin'}</span>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Staff'}</span>
         </div>
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <Link key={item.path} to={item.path} className={`nav-item ${location.pathname.startsWith(item.path) ? 'active' : ''}`}>
-              <item.icon size={20} />
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = location.pathname.startsWith(item.path);
+            return (
+              <Link key={item.path} to={item.path} className={`nav-item ${isActive ? 'active' : ''}`}>
+                {/* One pill shared across items, so switching pages slides it
+                    rather than cross-fading two separate backgrounds. */}
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="nav-pill"
+                    transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
+                  />
+                )}
+                <item.icon size={20} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
       </aside>
 
       <div className="main-content">
         <header className="top-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div className="pharmacy-name">Central Care Pharmacy</div>
-            <button 
+            <div className="pharmacy-name">{pharmacyName}</div>
+            <button
               onClick={() => setCmdOpen(true)}
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              className="quick-search-btn"
             >
-              <Search size={14} /> Quick Search <kbd style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>Ctrl+K</kbd>
+              <Search size={14} /> Quick Search <kbd>Ctrl+K</kbd>
             </button>
           </div>
 
           <div className="user-info">
-            <span style={{ fontWeight: '500', color: '#f8fafc' }}>{user?.username || user?.full_name || 'Staff User'}</span>
+            <span style={{ fontWeight: '500', color: '#f8fafc' }}>{user?.full_name || user?.username || 'Staff User'}</span>
             <button onClick={handleLogout} className="logout-btn" title="Logout">
               <LogOut size={16} />
             </button>
@@ -70,10 +83,23 @@ export default function AppLayout() {
         </header>
 
         <main className="page-content">
-          <Outlet />
+          {/* Page changes fade and lift very slightly. Navigation happens many
+              times an hour, so this stays short and small. */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+              style={{ height: '100%' }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
-      
+
       <button className="floating-chat-btn" onClick={() => setChatOpen(!chatOpen)} title="Toggle workflow assistant">
         <MessageSquare size={24} />
       </button>
