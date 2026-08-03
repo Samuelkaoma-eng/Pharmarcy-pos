@@ -40,6 +40,7 @@ exports.createPrescription = async (req, res) => {
     
     res.status(201).json({ message: 'Prescription created (mock)', data: { prescription_id: 'pr-new' } });
   } catch (error) {
+    console.error('Prescription controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -68,6 +69,7 @@ exports.getPrescriptions = async (req, res) => {
     
     res.json({ message: 'Prescriptions retrieved (mock)', data: MOCK_PRESCRIPTIONS });
   } catch (error) {
+    console.error('Prescription controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -94,6 +96,7 @@ exports.getPrescription = async (req, res) => {
     
     res.json({ message: 'Prescription retrieved (mock)', data: MOCK_PRESCRIPTIONS[0] });
   } catch (error) {
+    console.error('Prescription controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -108,11 +111,15 @@ exports.verifyPrescription = async (req, res) => {
         'UPDATE prescriptions SET status = $1, verified_by_id = $2 WHERE prescription_id = $3 AND tenant_id = $4 RETURNING *',
         ['VERIFIED', userId, id, tenantId]
       );
+      // No matching row means the prescription is missing or owned by another
+      // pharmacy. Reporting success there would fake a verification.
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Prescription not found' });
       return res.json({ message: 'Prescription verified', data: result.rows[0] });
     }
     
     res.json({ message: 'Prescription verified (mock)', data: { prescription_id: id, status: 'VERIFIED' } });
   } catch (error) {
+    console.error('Prescription controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -127,11 +134,13 @@ exports.dispensePrescription = async (req, res) => {
         'UPDATE prescriptions SET status = $1 WHERE prescription_id = $2 AND tenant_id = $3 RETURNING *',
         ['DISPENSED', id, tenantId]
       );
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Prescription not found' });
       return res.json({ message: 'Prescription dispensed', data: result.rows[0] });
     }
     
     res.json({ message: 'Prescription dispensed (mock)', data: { prescription_id: id, status: 'DISPENSED' } });
   } catch (error) {
+    console.error('Prescription controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

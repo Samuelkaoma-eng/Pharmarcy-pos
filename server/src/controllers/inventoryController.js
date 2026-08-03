@@ -7,10 +7,17 @@ exports.receiveStock = async (req, res) => {
 
     if (db.isDbAvailable()) {
       // Begin transaction
+      // The batch insert only proves the product exists, not that it belongs to
+      // the caller, so confirm ownership before writing anything.
+      const owned = await db.query('SELECT 1 FROM products WHERE product_id = $1 AND tenant_id = $2', [productId, tenantId]);
+      if (owned.rows.length === 0) {
+        return res.status(404).json({ error: 'Product not found for this pharmacy' });
+      }
+
       const client = await db.pool.connect();
       try {
         await client.query('BEGIN');
-        
+
         // 1. Create or update batch
         const batchRes = await client.query(
           `INSERT INTO product_batches (product_id, tenant_id, batch_number, expiry_date, initial_quantity, quantity_on_hand)
@@ -77,6 +84,7 @@ exports.dispenseStock = async (req, res) => {
     
     res.json({ message: 'Stock dispensed (mock)' });
   } catch (error) {
+    console.error('Inventory controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -113,6 +121,7 @@ exports.adjustStock = async (req, res) => {
     
     res.json({ message: 'Stock adjusted (mock)' });
   } catch (error) {
+    console.error('Inventory controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -129,6 +138,7 @@ exports.getMovements = async (req, res) => {
     
     res.json({ message: 'Movements retrieved (mock)', data: [] });
   } catch (error) {
+    console.error('Inventory controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
