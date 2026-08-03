@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { ShieldCheck, PackageCheck, CalendarClock, Activity, Pill } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { get, post } from '../api/client';
-import AuthShell, { BackLink, container, item } from '../components/AuthShell';
+import AuthShell, { BackLink, EASE, container, item } from '../components/AuthShell';
 
 // Fixed statements about what the system enforces, not live figures: this
 // screen is shown before anyone has authenticated, so it must not read data.

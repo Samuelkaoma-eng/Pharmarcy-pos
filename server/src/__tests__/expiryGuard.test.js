@@ -82,6 +82,41 @@ describe('Checkout expiry guard', () => {
     expect(items.rows[0].batch_id).toEqual(SEED.paracetamolBatch);
   });
 
+  it('refuses to dispense more than the pharmacy holds', async () => {
+    // Without this guard the sale succeeded and drove quantity_on_hand
+    // negative, which showed up on the dashboard as "-2 remaining".
+    const before = await pool.query('SELECT quantity_on_hand FROM product_batches WHERE batch_id = $1', [
+      SEED.paracetamolBatch
+    ]);
+    const held = before.rows[0].quantity_on_hand;
+
+    const res = await request(app)
+      .post('/api/sales')
+      .set('Authorization', `Bearer ${cashierToken}`)
+      .send({ paymentType: 'cash', items: [{ productId: SEED.paracetamol, quantity: held + 50 }] });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.error).toMatch(/INSUFFICIENT STOCK/);
+
+    const after = await pool.query('SELECT quantity_on_hand FROM product_batches WHERE batch_id = $1', [
+      SEED.paracetamolBatch
+    ]);
+    expect(after.rows[0].quantity_on_hand).toEqual(held);
+  });
+
+  it('refuses an over-sized draw on a named batch', async () => {
+    const res = await request(app)
+      .post('/api/sales')
+      .set('Authorization', `Bearer ${cashierToken}`)
+      .send({
+        paymentType: 'cash',
+        items: [{ productId: SEED.paracetamol, batchId: SEED.paracetamolBatch, quantity: 9999 }]
+      });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.error).toMatch(/INSUFFICIENT STOCK/);
+  });
+
   it('rejects a batch belonging to a different product', async () => {
     const res = await request(app)
       .post('/api/sales')

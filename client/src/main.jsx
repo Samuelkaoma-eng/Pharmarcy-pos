@@ -18,11 +18,13 @@ import Prescriptions from './pages/Prescriptions';
 import SalesHistory from './pages/SalesHistory';
 import AgentChat from './pages/AgentChat';
 import Settings from './pages/Settings';
+import Staff from './pages/Staff';
 
 import CHLogin from './pages/controlhub/CHLogin';
 import CHDashboard from './pages/controlhub/CHDashboard';
 import CHTenants from './pages/controlhub/CHTenants';
 import CHOnboarding from './pages/controlhub/CHOnboarding';
+import CHApprovals from './pages/controlhub/CHApprovals';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
@@ -60,6 +62,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/sales" element={<SalesHistory />} />
             <Route path="/agent" element={<AgentChat />} />
+            <Route path="/staff" element={<Staff />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
 
@@ -68,6 +71,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="dashboard" element={<CHDashboard />} />
             <Route path="tenants" element={<CHTenants />} />
             <Route path="onboarding" element={<CHOnboarding />} />
+            <Route path="approvals" element={<CHApprovals />} />
           </Route>
         </Routes>
       </BrowserRouter>

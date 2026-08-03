@@ -4,14 +4,20 @@ import { toast } from 'sonner';
 import NumberFlow from '@number-flow/react';
 import { get, post } from '../api/client';
 import { useCartStore } from '../store/useCartStore';
-import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+import Receipt from '../components/Receipt';
 
 export default function POSCheckout() {
+  const { tenant, pharmacyName, currency, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  // The cart is emptied the moment the sale succeeds, so what was sold has to
+  // be captured before that or the receipt renders with no lines.
+  const [receiptItems, setReceiptItems] = useState([]);
+  const [receiptTotals, setReceiptTotals] = useState({ subtotal: 0, vat: 0, total: 0 });
 
   const { 
     cart, 
@@ -43,11 +49,8 @@ export default function POSCheckout() {
       toast.error('Failed to load products from database');
     }
 
-    setProducts([
-      { product_id: '55555555-5555-5555-5555-555555555501', barcode: '600123456701', name: 'Paracetamol 500mg', dosage: '500mg', category: 'Pain Relief', selling_price: 25.00, requires_prescription: false, quantity_on_hand: 150 },
-      { product_id: '55555555-5555-5555-5555-555555555502', barcode: '600123456702', name: 'Amoxicillin 250mg', dosage: '250mg', category: 'Antibiotic', selling_price: 85.00, requires_prescription: true, quantity_on_hand: 45 },
-      { product_id: '55555555-5555-5555-5555-555555555503', barcode: '600123456703', name: 'Ibuprofen 400mg', dosage: '400mg', category: 'Anti-inflammatory', selling_price: 40.00, requires_prescription: false, quantity_on_hand: 80 }
-    ]);
+    // No invented catalogue. A failed load is reported, not disguised as stock.
+    setProducts([]);
   };
 
   const handleBarcodeScan = (e) => {
@@ -75,6 +78,9 @@ export default function POSCheckout() {
       return;
     }
 
+    const soldItems = cart.map((i) => ({ ...i }));
+    const soldTotals = { subtotal, vat, total: grandTotal };
+
     toast.promise(
       post('sales', {
         items: cart.map(i => ({ productId: i.product_id, quantity: i.qty })),
@@ -86,6 +92,8 @@ export default function POSCheckout() {
         success: (res) => {
           if (res?.data) {
             setReceiptData(res.data);
+            setReceiptItems(soldItems);
+            setReceiptTotals(soldTotals);
             setShowReceipt(true);
             clearCart();
             return 'Sale completed successfully!';
@@ -138,7 +146,7 @@ export default function POSCheckout() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '12px' }}>
                 <span className="stock-text" style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Stock: {p.quantity_on_hand || 100}</span>
                 <span className="price-text" style={{ color: '#4ade80', fontWeight: '700', fontSize: '1.1rem' }}>
-                  K <NumberFlow value={parseFloat(p.selling_price)} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
+                  {currency} <NumberFlow value={parseFloat(p.selling_price)} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                 </span>
               </div>
             </div>
@@ -172,7 +180,7 @@ export default function POSCheckout() {
                       </div>
                     </td>
                     <td style={{ color: '#4ade80' }}>
-                      K <NumberFlow value={item.subtotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
+                      {currency} <NumberFlow value={item.subtotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                     </td>
                     <td><button className="icon-btn text-danger" onClick={() => removeFromCart(item.product_id)}><Trash2 size={16}/></button></td>
                   </tr>
@@ -212,16 +220,16 @@ export default function POSCheckout() {
           <div className="summary-card">
             <div className="summary-row">
               <span>Subtotal:</span>
-              <span>K <NumberFlow value={subtotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /></span>
+              <span>{currency} <NumberFlow value={subtotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /></span>
             </div>
             <div className="summary-row">
               <span>VAT (16%):</span>
-              <span>K <NumberFlow value={vat} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /></span>
+              <span>{currency} <NumberFlow value={vat} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /></span>
             </div>
             <div className="summary-row summary-total">
               <span>Total:</span>
               <span style={{ color: '#4ade80' }}>
-                K <NumberFlow value={grandTotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
+                {currency} <NumberFlow value={grandTotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
               </span>
             </div>
           </div>
@@ -232,26 +240,17 @@ export default function POSCheckout() {
         </div>
       </div>
 
-      {/* RECEIPT MODAL */}
       {showReceipt && (
-        <Modal isOpen={showReceipt} onClose={() => setShowReceipt(false)} title="Thermal Receipt Preview">
-          <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--text-3)', paddingBottom: '12px', marginBottom: '12px' }}>
-            <h3 style={{ color: '#fff' }}>CENTRAL CARE PHARMACY</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>123 Great East Road, Lusaka</p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Receipt #: {receiptData?.receipt_number || 'REC-20260802-1001'}</p>
-          </div>
-
-          <div className="summary-card" style={{ marginBottom: '16px' }}>
-            <div className="summary-row summary-total"><span>Total Paid:</span><span style={{ color: '#4ade80' }}>K {receiptData?.total || grandTotal.toFixed(2)}</span></div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowReceipt(false)}>Close</button>
-            <button className="btn btn-success" style={{ flex: 1 }} onClick={() => window.print()}>
-              <Printer size={18} /> Print Thermal Receipt
-            </button>
-          </div>
-        </Modal>
+        <Receipt
+          sale={receiptData}
+          items={receiptItems}
+          totals={receiptTotals}
+          tenant={tenant}
+          servedBy={user?.full_name || user?.username}
+          currency={currency}
+          paymentType={paymentType}
+          onClose={() => setShowReceipt(false)}
+        />
       )}
     </div>
   );

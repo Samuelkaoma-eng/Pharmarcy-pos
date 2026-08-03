@@ -47,7 +47,8 @@ exports.createSale = async (req, res) => {
 
         if (item.batchId) {
           const batchRes = await client.query(
-            `SELECT batch_id, batch_number, expiry_date, expiry_date < CURRENT_DATE AS is_expired
+            `SELECT batch_id, batch_number, expiry_date, quantity_on_hand,
+                    expiry_date < CURRENT_DATE AS is_expired
              FROM product_batches
              WHERE batch_id = $1 AND product_id = $2 AND tenant_id = $3`,
             [item.batchId, product.product_id, tenantId]
@@ -59,6 +60,11 @@ exports.createSale = async (req, res) => {
           if (batchRes.rows[0].is_expired) {
             throw new Error(
               `EXPIRED STOCK: Batch '${batchRes.rows[0].batch_number}' of '${product.name}' expired on ${new Date(batchRes.rows[0].expiry_date).toISOString().slice(0, 10)}`
+            );
+          }
+          if (batchRes.rows[0].quantity_on_hand < item.quantity) {
+            throw new Error(
+              `INSUFFICIENT STOCK: batch '${batchRes.rows[0].batch_number}' holds ${batchRes.rows[0].quantity_on_hand} of '${product.name}', ${item.quantity} requested`
             );
           }
           resolvedBatchId = batchRes.rows[0].batch_id;
@@ -75,6 +81,18 @@ exports.createSale = async (req, res) => {
 
           if (tracked.rows.length > 0 && sellable.length === 0) {
             throw new Error(`EXPIRED STOCK: All batches of '${product.name}' are expired or out of stock`);
+          }
+
+          // Stock Guard Check
+          // A pharmacy cannot dispense what it does not hold. Without this the
+          // sale still succeeded and drove quantity_on_hand negative.
+          if (sellable.length > 0) {
+            const available = sellable.reduce((sum, b) => sum + b.quantity_on_hand, 0);
+            if (available < item.quantity) {
+              throw new Error(
+                `INSUFFICIENT STOCK: only ${available} of '${product.name}' remain in date, ${item.quantity} requested`
+              );
+            }
           }
 
           // Products with no batch records are untracked stock and stay sellable.

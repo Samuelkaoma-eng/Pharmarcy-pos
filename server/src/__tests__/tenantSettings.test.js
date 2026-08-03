@@ -104,6 +104,28 @@ describe('Two-tier customisation: ControlHub settings and tenant branding', () =
     expect(res.body.data.theme_color).toEqual('#7c3aed');
   });
 
+  it('saves a pharmacy logo and leaves omitted fields alone', async () => {
+    const res = await request(app)
+      .put('/api/tenants/config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ logo_url: 'https://example.com/logo.png' });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.data.logo_url).toEqual('https://example.com/logo.png');
+    // A partial update must not blank the name it did not mention.
+    expect(res.body.data.name).toEqual('Central Care Pharmacy');
+  });
+
+  it('clears the logo when an empty value is sent', async () => {
+    const res = await request(app)
+      .put('/api/tenants/config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ logo_url: '' });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.data.logo_url).toBeNull();
+  });
+
   it('surfaces branding and the read-only settings on the tenant config', async () => {
     const res = await request(app)
       .get('/api/tenants/config')

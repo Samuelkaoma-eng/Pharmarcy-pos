@@ -33,6 +33,12 @@ automated test in `server/src/__tests__/` fails without the fix.
 | **DEF-022** | 2026-08-03 | Frontend | The API client used an absolute `http://localhost:5000` base URL, bypassing the Vite proxy that was already configured and forcing cross-origin requests in development. | Low | **RESOLVED** | The base URL is relative by default, with `VITE_API_URL` as an override. |
 | **DEF-023** | 2026-08-03 | Reporting | `getExpiryAlerts` hardcoded a ninety day window, so the per-pharmacy alert setting could not affect it. | Low | **RESOLVED** | The query reads `expiry_alert_days` from the tenant. Covered by `tenantSettings.test.js`. |
 
+| **DEF-024** | 2026-08-03 | Sales Engine | Checkout never compared the quantity requested against stock held, so a sale could dispense medication the pharmacy did not have and drive `quantity_on_hand` negative. The dashboard showed Amoxicillin at "-2 remaining". | High | **RESOLVED** | Added a stock guard beside the expiry guard, for both a named batch and the first-expired-first-out path. Covered by `expiryGuard.test.js`. |
+| **DEF-025** | 2026-08-03 | Frontend | The dashboard opened with invented figures (`K 1,250.00` takings, `320` products, `3` alerts) that were never replaced by real data, and fell back to three fabricated sale rows when none were returned. | Medium | **RESOLVED** | Every figure is now derived from the server's answer and renders as a dash until it arrives; the empty state says so instead of inventing rows. |
+| **DEF-026** | 2026-08-03 | Frontend | The receipt print button produced a blank page. The print stylesheet revealed only `.receipt-content`, a class no element carried, and used `visibility: hidden`, which hides ink but keeps the layout box so the document printed after pages of invisible chrome. | Medium | **RESOLVED** | The receipt is a portalled document dropped in beside the app root, and the print rule uses `display: none` on its siblings. |
+| **DEF-027** | 2026-08-03 | Frontend | The POS catalogue and receipt hardcoded one pharmacy's name and the `K` currency symbol, ignoring tenant branding, and invented three products when the catalogue failed to load. | Low | **RESOLVED** | Both read the signed-in tenant's branding; a failed load reports itself rather than showing invented stock. |
+| **DEF-028** | 2026-08-03 | Frontend | A staff member whose avatar URL failed to load was left with no avatar at all, because the error handler hid the broken image without falling back. | Low | **RESOLVED** | The avatar falls back to initials. |
+
 ## Known limitations
 
 These are recorded rather than fixed, so the position is explicit.
@@ -41,5 +47,6 @@ These are recorded rather than fixed, so the position is explicit.
 | :--- | :--- | :--- | :--- |
 | **LIM-001** | Sales Engine | Checkout does not verify that the prescription supplied actually lists the drug being sold, only that one was supplied. | Match `prescription_items.product_id` against the cart during Transition. |
 | **LIM-002** | Inventory Engine | `dispenseStock` records a movement even when the scoped batch update matches nothing, so a bad `batchId` logs a phantom movement. | Apply the DEF-008 pattern to the inventory routes. |
-| **LIM-003** | Sales Engine | Stock is not checked against `quantity_on_hand` at checkout, so a sale may drive a batch to zero via `GREATEST(0, ...)` without warning the cashier. | Add an insufficient-stock guard alongside the expiry guard. |
-| **LIM-004** | Controllers | Several controllers fall back to mock responses when PostgreSQL is unreachable, which can mask an outage during a demo. | Restrict the fallback to an explicit demo flag. |
+| **LIM-003** | Controllers | Several controllers fall back to mock responses when PostgreSQL is unreachable, which can mask an outage during a demo. | Restrict the fallback to an explicit demo flag. |
+| **LIM-004** | Onboarding | Compliance documents are recorded and reviewed by name and type, but the files themselves are not uploaded or stored. | Add file storage before the Transition demo. |
+| **LIM-005** | Till | There is no till session: sales are not grouped into a shift, and there is no float, closing count or cash variance. | See the recommendation in `UP_ALIGNMENT_AUDIT.md`. |

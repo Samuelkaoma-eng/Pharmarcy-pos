@@ -548,6 +548,90 @@ select.input-field { cursor: pointer; }
 }
 .ch-switch[data-on='true'] span { transform: translateX(16px); }
 
+/* Staff, avatars and approvals */
+.avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.logo-preview {
+  margin-top: 10px;
+  max-height: 46px;
+  max-width: 160px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 5px 8px;
+}
+
+.staff-list { display: flex; flex-direction: column; gap: 8px; }
+
+.staff-row, .approval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  flex-wrap: wrap;
+}
+
+.staff-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.staff-identity p { font-size: 0.87rem; font-weight: 500; display: flex; align-items: center; gap: 7px; }
+.staff-identity small { font-size: 0.76rem; color: var(--text-3); }
+
+.staff-you {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.staff-role { display: flex; flex-direction: column; gap: 4px; min-width: 172px; }
+.staff-role small { font-size: 0.73rem; color: var(--text-3); }
+.staff-role select { padding: 5px 9px; font-size: 0.8rem; }
+.staff-actions { display: flex; align-items: center; gap: 9px; }
+.staff-actions .btn { padding: 5px 9px; }
+
+.approval-row { align-items: flex-start; }
+.approval-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.approval-main p { font-size: 0.88rem; font-weight: 500; }
+.approval-main small { font-size: 0.76rem; color: var(--text-3); }
+.approval-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.approval-actions .btn { padding: 5px 10px; }
+.approval-blocked {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.76rem; color: var(--text-3);
+  padding: 5px 10px; border: 1px dashed var(--border-strong); border-radius: var(--r-md);
+}
+
+.form-note {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.76rem; color: var(--text-3);
+  padding: 8px 10px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+}
+
+textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5; }
+
 /* Onboarding review */
 .app-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .app-head h3 { font-size: 1rem; font-weight: 600; }
@@ -774,10 +858,119 @@ select.input-field { cursor: pointer; }
 }
 
 /* ============================================================
-   PRINT — receipts only
+   PRINTED DOCUMENTS
+   A receipt is a physical document. It renders on white and
+   inherits none of the app's surfaces.
    ============================================================ */
+.doc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #1c1d1f;
+  overflow-y: auto;
+  padding-bottom: max(48px, env(safe-area-inset-bottom));
+}
+
+.doc-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+  background: #141517;
+  border-bottom: 1px solid #000;
+}
+
+.doc-print-root { display: flex; justify-content: center; padding: 24px 14px; }
+
+.doc-page {
+  background: #fff;
+  color: #111;
+  width: 210mm;
+  max-width: 100%;
+  padding: 20mm 18mm;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+/* A till receipt is a short document. Held at A4 it would be one third content
+   and two thirds blank paper, which reads as something having failed to load. */
+.doc-page--receipt { width: 148mm; padding: 14mm 12mm; }
+
+.doc-letterhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  border-bottom: 3px solid #111;
+  padding-bottom: 12px;
+}
+
+.doc-parties {
+  display: flex;
+  justify-content: space-between;
+  gap: 26px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: #555;
+}
+
+.doc-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin-bottom: 3px;
+}
+
+.doc-note {
+  margin-top: 16px;
+  padding: 9px 11px;
+  background: #f6f6f3;
+  border: 1px solid #e3e3dd;
+  border-radius: 5px;
+  font-size: 10.5px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.doc-footer {
+  margin-top: 22px;
+  padding-top: 11px;
+  border-top: 1px solid #ddd;
+  font-size: 10px;
+  color: #777;
+  text-align: center;
+  line-height: 1.6;
+}
+
 @media print {
-  body * { visibility: hidden; }
-  .receipt-content, .receipt-content * { visibility: visible; }
-  .receipt-content { position: absolute; left: 0; top: 0; width: 100%; }
+  /* display: none, not visibility: hidden.
+
+     visibility keeps the layout box and all of its height — it hides the ink,
+     not the paper. The workspace behind was therefore still laid out at full
+     height, and the receipt landed after it, beginning several blank pages in.
+
+     display removes the box entirely. It cannot be set on an ancestor of the
+     document, since a descendant cannot override it, which is why Receipt
+     portals into document.body and becomes a sibling of the app root. */
+  body > *:not(.doc-overlay) { display: none !important; }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+  }
+
+  /* Screen insets belong to the screen, not the paper. */
+  .doc-overlay { position: static; background: #fff; overflow: visible; padding: 0; }
+  .doc-toolbar { display: none !important; }
+  .doc-print-root { padding: 0; display: block; }
+  .doc-page { box-shadow: none; width: auto; padding: 0; }
+  .doc-no-print { display: none !important; }
+
+  @page { margin: 12mm; }
 }

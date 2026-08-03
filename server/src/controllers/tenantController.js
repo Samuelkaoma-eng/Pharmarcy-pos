@@ -50,12 +50,21 @@ exports.getConfig = async (req, res) => {
 exports.updateConfig = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { name, theme_color, currency_symbol, address } = req.body;
-    
+    const { name, theme_color, currency_symbol, address, phone, logo_url } = req.body;
+
     if (db.isDbAvailable()) {
+      // COALESCE so a partial update does not blank the fields it omits.
       const result = await db.query(
-        'UPDATE tenants SET name = $1, theme_color = $2, currency_symbol = $3, address = $4 WHERE tenant_id = $5 RETURNING name, theme_color, currency_symbol, address',
-        [name, theme_color, currency_symbol, address, tenantId]
+        `UPDATE tenants SET
+           name = COALESCE($1, name),
+           theme_color = COALESCE($2, theme_color),
+           currency_symbol = COALESCE($3, currency_symbol),
+           address = COALESCE($4, address),
+           phone = COALESCE($5, phone),
+           logo_url = NULLIF(COALESCE($6, logo_url), '')
+         WHERE tenant_id = $7
+         RETURNING name, theme_color, currency_symbol, address, phone, logo_url`,
+        [name, theme_color, currency_symbol, address, phone, logo_url, tenantId]
       );
       return res.json({ message: 'Tenant config updated', data: result.rows[0] });
     }

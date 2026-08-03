@@ -25,13 +25,15 @@ const tile = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { pharmacyName } = useAuth();
+  const { pharmacyName, currency } = useAuth();
+  // Nothing is invented here. Every figure below stays null until the server
+  // has answered, and renders as a dash if it never does. A dashboard that
+  // makes numbers up is worse than one that admits it has none.
   const [stats, setStats] = useState({
-    todaySales: 'K 1,250.00',
-    totalItems: 320,
-    lowStockCount: 3,
-    pendingRx: 2,
-    waitingPatients: 2
+    todaySales: null,
+    totalItems: null,
+    lowStockCount: null,
+    waitingPatients: null
   });
   const [recentSales, setRecentSales] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
@@ -43,23 +45,39 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     setLoading(true);
-    try {
-      const salesRes = await get('sales');
-      if (salesRes?.data) setRecentSales(salesRes.data.slice(0, 5));
 
-      const stockRes = await get('products/low-stock');
-      if (stockRes?.data) setLowStockProducts(stockRes.data);
+    const [salesRes, stockRes, queueRes, productsRes] = await Promise.all([
+      get('sales'),
+      get('products/low-stock'),
+      get('visits/stats'),
+      get('products')
+    ]);
 
-      const queueRes = await get('visits/stats');
-      if (queueRes?.data) {
-        setStats(prev => ({ ...prev, waitingPatients: queueRes.data.waiting || 2 }));
-      }
-    } catch (err) {
-      console.warn('Using dashboard mock fallback');
-    } finally {
-      setLoading(false);
+    const next = {};
+
+    if (salesRes?.data) {
+      setRecentSales(salesRes.data.slice(0, 5));
+
+      // Today's takings, summed from the sales the server actually returned.
+      const today = new Date().toDateString();
+      next.todaySales = salesRes.data
+        .filter((s) => new Date(s.date_time).toDateString() === today)
+        .reduce((sum, s) => sum + Number(s.total || 0), 0);
     }
+
+    if (stockRes?.data) {
+      setLowStockProducts(stockRes.data);
+      next.lowStockCount = stockRes.data.length;
+    }
+
+    if (productsRes?.data) next.totalItems = productsRes.data.length;
+    if (queueRes?.data) next.waitingPatients = queueRes.data.waiting ?? 0;
+
+    setStats((prev) => ({ ...prev, ...next }));
+    setLoading(false);
   };
+
+  const show = (value, format) => (value === null || value === undefined ? '—' : format ? format(value) : value);
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -89,7 +107,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Today's Total Sales</span>
             <div style={{ background: 'rgba(34, 197, 94, 0.2)', padding: '8px', borderRadius: '10px' }}><DollarSign size={20} color="#4ade80" /></div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#4ade80' }}>{stats.todaySales}</h2>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#4ade80' }}>{show(stats.todaySales, v => currency + ' ' + v.toFixed(2))}</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Updated live from transactions</span>
         </motion.div>
 
@@ -98,7 +116,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Total Products in Stock</span>
             <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '8px', borderRadius: '10px' }}><Package size={20} color="#60a5fa" /></div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: 'var(--text)' }}>{stats.totalItems}</h2>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: 'var(--text)' }}>{show(stats.totalItems)}</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Active inventory items</span>
         </motion.div>
 
@@ -107,7 +125,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Low Stock Alerts</span>
             <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '8px', borderRadius: '10px' }}><AlertTriangle size={20} color="#f87171" /></div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f87171' }}>{stats.lowStockCount}</h2>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#f87171' }}>{show(stats.lowStockCount)}</h2>
           <span style={{ fontSize: '0.75rem', color: '#f87171' }}>Items below reorder level</span>
         </motion.div>
 
@@ -116,7 +134,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.85rem', color: 'var(--text-2)', fontWeight: '500' }}>Patients Waiting in Queue</span>
             <div style={{ background: 'rgba(234, 179, 8, 0.2)', padding: '8px', borderRadius: '10px' }}><Clock size={20} color="#facc15" /></div>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#facc15' }}>{stats.waitingPatients}</h2>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '8px', color: '#facc15' }}>{show(stats.waitingPatients)}</h2>
           <span style={{ fontSize: '0.75rem', color: '#facc15' }}>Triage walk-ins waiting</span>
         </motion.div>
       </motion.div>
@@ -150,18 +168,19 @@ export default function Dashboard() {
               <tr><th>Receipt #</th><th>Status</th><th>Total</th></tr>
             </thead>
             <tbody>
-              {recentSales.length > 0 ? recentSales.map((s, idx) => (
-                <tr key={idx}>
-                  <td style={{ fontWeight: '500' }}>{s.receipt_number || `REC-2026-0${idx+1}`}</td>
-                  <td><span className="badge badge-green">COMPLETED</span></td>
-                  <td style={{ color: '#4ade80', fontWeight: '600' }}>K {parseFloat(s.total || 120).toFixed(2)}</td>
+              {/* No invented rows. An empty till is a fact worth showing. */}
+              {recentSales.length > 0 ? recentSales.map((s) => (
+                <tr key={s.sale_id || s.receipt_number}>
+                  <td style={{ fontWeight: '500' }}>{s.receipt_number}</td>
+                  <td><span className="badge badge-green">{s.status || 'COMPLETED'}</span></td>
+                  <td style={{ fontWeight: '600' }}>{currency} {parseFloat(s.total || 0).toFixed(2)}</td>
                 </tr>
               )) : (
-                <>
-                  <tr><td>REC-20260802-9841</td><td><span className="badge badge-green">COMPLETED</span></td><td style={{ color: '#4ade80' }}>K 110.00</td></tr>
-                  <tr><td>REC-20260802-7712</td><td><span className="badge badge-green">COMPLETED</span></td><td style={{ color: '#4ade80' }}>K 245.00</td></tr>
-                  <tr><td>REC-20260802-3310</td><td><span className="badge badge-green">COMPLETED</span></td><td style={{ color: '#4ade80' }}>K 85.00</td></tr>
-                </>
+                <tr>
+                  <td colSpan={3} style={{ color: 'var(--text-3)' }}>
+                    {loading ? 'Loading sales…' : 'No sales recorded yet.'}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

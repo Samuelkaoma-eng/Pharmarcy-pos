@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, AlertTriangle, ArrowUpRight, ArrowDownRight, Search, Filter, RefreshCw, Check } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { get, post } from '../api/client';
 import Modal from '../components/Modal';
 
@@ -215,7 +216,7 @@ export default function Inventory() {
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Dosage: {p.dosage || '500mg'}</div>
                 </td>
                 <td><span className="badge badge-blue">{p.category}</span></td>
-                <td style={{ color: '#4ade80', fontWeight: '600' }}>K {parseFloat(p.selling_price).toFixed(2)}</td>
+                <td style={{ color: '#4ade80', fontWeight: '600' }}>{currency} {parseFloat(p.selling_price).toFixed(2)}</td>
                 <td>
                   <span className={`badge ${p.quantity_on_hand > 10 ? 'badge-green' : 'badge-red'}`}>
                     {p.quantity_on_hand} units

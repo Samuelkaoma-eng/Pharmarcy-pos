@@ -48,6 +48,21 @@ rather than quietly carried.
 The lesson recorded for the Transition phase: a defect is not closed until a
 test fails without the fix.
 
+## The Missing Accountability Layer: Till Sessions
+
+The single largest gap left is that a sale belongs to a cashier but not to a
+shift. There is no record of a till being opened with a float, no closing count,
+and therefore no way to discover that the drawer is short. Every sale is
+individually auditable and the day as a whole is not.
+
+The shape worth adopting is the counter model proven in a sibling project: a
+till session opens with a declared float, every sale is attached to it, and
+closing requires a counted figure which is compared against what the system
+expected. The difference is recorded as a variance rather than silently
+absorbed. That single addition turns a POS into something a pharmacy owner can
+actually reconcile against cash in hand, and it is the natural next feature
+after the guards already in place.
+
 ## Highest-Value Next Work
 
 1. Add a concise architecture proof document under `Docs/Elaboration/` showing the React client, Express API, PostgreSQL schema, tenant middleware, and CI boundary.

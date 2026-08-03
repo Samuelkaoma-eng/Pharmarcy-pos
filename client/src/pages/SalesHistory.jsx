@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Printer, Eye, FileText, CheckCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { get } from '../api/client';
 import Modal from '../components/Modal';
 
@@ -74,7 +75,7 @@ export default function SalesHistory() {
                 <td>{new Date(s.date_time).toLocaleString()}</td>
                 <td>{s.cashier || 'Samuel Kaoma'}</td>
                 <td style={{ textTransform: 'uppercase', fontSize: '0.85rem' }}>{s.payment_type || 'cash'}</td>
-                <td style={{ color: '#4ade80', fontWeight: '600' }}>K {parseFloat(s.total).toFixed(2)}</td>
+                <td style={{ color: '#4ade80', fontWeight: '600' }}>{currency} {parseFloat(s.total).toFixed(2)}</td>
                 <td><span className="badge badge-green">COMPLETED</span></td>
                 <td>
                   <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '0.8rem' }} onClick={() => setSelectedSale(s)}>
@@ -104,14 +105,14 @@ export default function SalesHistory() {
                 <tr key={idx}>
                   <td>{i.name}</td>
                   <td>{i.quantity}</td>
-                  <td style={{ textAlign: 'right' }}>K {parseFloat(i.subtotal).toFixed(2)}</td>
+                  <td style={{ textAlign: 'right' }}>{currency} {parseFloat(i.subtotal).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           <div className="summary-card" style={{ marginBottom: '16px' }}>
-            <div className="summary-row"><span>Total Paid:</span><span style={{ color: '#4ade80', fontWeight: '700' }}>K {parseFloat(selectedSale.total).toFixed(2)}</span></div>
+            <div className="summary-row"><span>Total Paid:</span><span style={{ color: '#4ade80', fontWeight: '700' }}>{currency} {parseFloat(selectedSale.total).toFixed(2)}</span></div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>

@@ -103,6 +103,26 @@ export default function Settings() {
         </div>
 
         <div>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Pharmacy logo URL:</label>
+          <input
+            type="url"
+            className="input-field"
+            placeholder="https://…"
+            value={config.logo_url || ''}
+            onChange={(e) => setConfig({ ...config, logo_url: e.target.value })}
+          />
+          {/* Shown here and on the printed receipt letterhead. */}
+          {config.logo_url && (
+            <img
+              src={config.logo_url}
+              alt="Pharmacy logo preview"
+              className="logo-preview"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          )}
+        </div>
+
+        <div>
           <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Pharmacy Physical Address:</label>
           <input type="text" className="input-field" value={config.address} onChange={(e) => setConfig({ ...config, address: e.target.value })} />
         </div>
