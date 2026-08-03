@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AppLayout from './layouts/AppLayout';
 import ControlHubLayout from './layouts/ControlHubLayout';
 
+import Landing from './pages/Landing';
+import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import POSCheckout from './pages/POSCheckout';
@@ -41,20 +43,24 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/controlhub/login" element={<CHLogin />} />
-          
-          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/dashboard" />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="pos" element={<POSCheckout />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="patients" element={<Patients />} />
-            <Route path="triage" element={<TriageQueue />} />
-            <Route path="prescriptions" element={<Prescriptions />} />
-            <Route path="sales" element={<SalesHistory />} />
-            <Route path="agent" element={<AgentChat />} />
-            <Route path="settings" element={<Settings />} />
+
+          {/* The workspace is a layout route with no path of its own, so the
+              public landing page can own "/" while these stay top level. */}
+          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/pos" element={<POSCheckout />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/patients" element={<Patients />} />
+            <Route path="/triage" element={<TriageQueue />} />
+            <Route path="/prescriptions" element={<Prescriptions />} />
+            <Route path="/sales" element={<SalesHistory />} />
+            <Route path="/agent" element={<AgentChat />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
           <Route path="/controlhub" element={<ControlHubRoute><ControlHubLayout /></ControlHubRoute>}>
