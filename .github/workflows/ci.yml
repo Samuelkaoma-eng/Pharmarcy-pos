@@ -43,10 +43,26 @@ jobs:
           cd client
           npm install
 
+      - name: Lint Server Source
+        run: |
+          cd server
+          npm run lint
+
       - name: Build Frontend Application
         run: |
           cd client
           npm run build
+
+      - name: Apply Schema and Seed Data
+        run: |
+          cd server
+          npm run db:reset
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: password
+          DB_NAME: pharmacy_pos
 
       - name: Run Server Automated Test Suite
         run: |
