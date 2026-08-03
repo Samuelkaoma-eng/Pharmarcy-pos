@@ -3,18 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pill, CheckCircle2 } from 'lucide-react';
 import { post } from '../api/client';
-
-const EASE = [0.23, 1, 0.32, 1];
-
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } }
-};
-
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } }
-};
+import { BackLink, EASE, container, item } from '../components/AuthShell';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -54,8 +43,14 @@ export default function Register() {
   return (
     <div className="login-form-side register-page">
       <motion.div className="login-form-wrap" variants={container} initial="hidden" animate="show">
+        {/* The form itself was previously a dead end: only the success screen
+            offered a way back. */}
+        <motion.div variants={item}>
+          <BackLink to="/" />
+        </motion.div>
+
         <motion.div className="login-mobile-brand register-brand" variants={item}>
-          <Pill size={22} /> <span>PharmaPOS</span>
+          <Pill size={20} /> <span>PharmaPOS</span>
         </motion.div>
 
         <AnimatePresence mode="wait">

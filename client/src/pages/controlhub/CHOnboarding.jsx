@@ -1,69 +1,223 @@
-import React, { useState } from 'react';
-import { Check, X, FileText, ShieldCheck, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
+import { Check, X, FileText, ShieldCheck, Clock, ChevronDown } from 'lucide-react';
+import { get, put, patch } from '../../api/client';
 
-export default function CHOnboarding() {
-  const [applications, setApplications] = useState([
-    {
-      id: 'app1',
-      name: 'Ndola MediQuick Pharmacy',
-      owner_email: 'admin@mediquick.zm',
-      phone: '+260966888999',
-      address: '45 President Avenue, Ndola',
-      license: 'PHAR-ZM-2026-042',
-      status: 'UNDER_REVIEW',
-      submitted_at: '2026-08-02',
-      documents: ['Pharmacy license', 'Owner NRC', 'Premises inspection form'],
-      review_notes: 'License number format verified. Premises inspection still needs final reviewer sign-off.'
+const EASE = [0.23, 1, 0.32, 1];
+
+const DOC_LABELS = {
+  PHARMACY_LICENCE: 'Pharmacy licence',
+  OWNER_ID: 'Owner identification',
+  PREMISES_INSPECTION: 'Premises inspection'
+};
+
+function DocumentRow({ doc, onReview, busy }) {
+  const tone =
+    doc.status === 'VERIFIED' ? 'badge-green' : doc.status === 'REJECTED' ? 'badge-red' : 'badge-yellow';
+
+  return (
+    <div className="doc-row">
+      <div className="doc-row-main">
+        <FileText size={15} />
+        <div>
+          <p>{DOC_LABELS[doc.document_type] || doc.document_type}</p>
+          <small>{doc.file_name}</small>
+          {doc.reviewed_by_name && (
+            <small className="doc-review-note">
+              {doc.status === 'VERIFIED' ? 'Verified' : 'Rejected'} by {doc.reviewed_by_name}
+              {doc.review_notes ? ` — ${doc.review_notes}` : ''}
+            </small>
+          )}
+        </div>
+      </div>
+
+      <div className="doc-row-actions">
+        <span className={`badge ${tone}`}>{doc.status}</span>
+        <button
+          className="btn btn-secondary"
+          disabled={busy || doc.status === 'VERIFIED'}
+          onClick={() => onReview(doc.document_id, 'VERIFIED')}
+          aria-label={`Verify ${doc.file_name}`}
+        >
+          <Check size={14} />
+        </button>
+        <button
+          className="btn btn-danger"
+          disabled={busy || doc.status === 'REJECTED'}
+          onClick={() => onReview(doc.document_id, 'REJECTED')}
+          aria-label={`Reject ${doc.file_name}`}
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ApplicationCard({ app, onActivated }) {
+  const [open, setOpen] = useState(false);
+  const [documents, setDocuments] = useState(null);
+  const [readiness, setReadiness] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const loadReview = useCallback(async () => {
+    const [docsRes, readyRes] = await Promise.all([
+      get(`controlhub/tenants/${app.tenant_id}/documents`),
+      get(`controlhub/tenants/${app.tenant_id}/readiness`)
+    ]);
+    if (docsRes?.data) setDocuments(docsRes.data);
+    if (readyRes?.data) setReadiness(readyRes.data);
+  }, [app.tenant_id]);
+
+  // Readiness gates the activate button, so it is needed before the reviewer
+  // opens the document list.
+  useEffect(() => { loadReview(); }, [loadReview]);
+
+  const handleReview = async (documentId, status) => {
+    setBusy(true);
+    const res = await patch(`controlhub/documents/${documentId}/review`, { status });
+    if (res?.data) {
+      await loadReview();
+      toast.success(`Document ${status.toLowerCase()}`);
+    } else {
+      toast.error('Could not record the review', {
+        description: res?.error || 'The server rejected the change.'
+      });
     }
-  ]);
+    setBusy(false);
+  };
 
-  const handleAction = (id, status) => {
-    setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    alert(`Application ${status === 'ACTIVE' ? 'approved and activated' : 'rejected'}.`);
+  const handleActivate = async () => {
+    setBusy(true);
+    const res = await put(`controlhub/tenants/${app.tenant_id}/status`, { status: 'ACTIVE' });
+    if (res?.data) {
+      toast.success('Pharmacy activated', { description: `${app.name} can now sign in and trade.` });
+      onActivated(app.tenant_id);
+    } else {
+      toast.error('Could not activate', { description: res?.error || 'The server rejected the change.' });
+    }
+    setBusy(false);
   };
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: '#f8fafc' }}>Branch Onboarding Reviews</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>Review pharmacy registration, compliance documents, and activation readiness.</p>
+    <motion.div
+      className="ch-tenant-card"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      <div className="app-head">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+            <h3>{app.name}</h3>
+            <span className="badge badge-yellow">{app.status}</span>
+          </div>
+          <p className="app-meta">{app.owner_email} · {app.phone || 'no phone on file'}</p>
+          <p className="app-meta">{app.address || 'No address on file'}</p>
+          <p className="app-meta">Licence {app.license_number || 'not supplied'}</p>
+        </div>
+
+        <button className="btn btn-secondary" onClick={() => setOpen(!open)} aria-expanded={open}>
+          <FileText size={14} /> Documents
+          <motion.span
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.2, ease: EASE }}
+            style={{ display: 'flex' }}
+          >
+            <ChevronDown size={14} />
+          </motion.span>
+        </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {applications.map(app => (
-          <div key={app.id} style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', padding: '20px', display: 'grid', gridTemplateColumns: '1.5fr 1fr auto', gap: '20px', alignItems: 'center' }}>
-            <div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '6px' }}>
-                <h3 style={{ fontSize: '1.15rem', color: '#fff' }}>{app.name}</h3>
-                <span className="badge badge-yellow">{app.status}</span>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Owner: {app.owner_email} | Phone: {app.phone}</p>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>License #: <span style={{ fontFamily: 'monospace', color: '#60a5fa' }}>{app.license}</span></p>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Address: {app.address}</p>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.26, ease: EASE }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="doc-list">
+              {documents === null && <p className="ch-settings-loading">Loading documents…</p>}
+              {documents?.length === 0 && <p className="ch-settings-loading">No documents submitted.</p>}
+              {documents?.map((doc) => (
+                <DocumentRow key={doc.document_id} doc={doc} onReview={handleReview} busy={busy} />
+              ))}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1', fontSize: '0.85rem' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={14} /> Submitted {app.submitted_at}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><ShieldCheck size={14} /> Compliance review in progress</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FileText size={14} /> {app.documents.length} documents attached</span>
-              <p style={{ color: '#94a3b8', marginTop: '4px' }}>{app.review_notes}</p>
-            </div>
+      <div className="app-foot">
+        {readiness && (
+          <span className="app-readiness">
+            {readiness.ready_to_activate ? (
+              <><ShieldCheck size={14} /> All {readiness.total} documents verified</>
+            ) : (
+              <><Clock size={14} /> {readiness.pending} of {readiness.total} still pending</>
+            )}
+          </span>
+        )}
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {app.status === 'UNDER_REVIEW' ? (
-                <>
-                  <button className="btn btn-success" onClick={() => handleAction(app.id, 'ACTIVE')}>
-                    <Check size={16} /> Approve & Activate
-                  </button>
-                  <button className="btn btn-danger" onClick={() => handleAction(app.id, 'REJECTED')}>
-                    <X size={16} /> Reject
-                  </button>
-                </>
-              ) : (
-                <span style={{ fontSize: '0.9rem', color: '#4ade80', fontWeight: '600' }}>Process Complete ({app.status})</span>
-              )}
-            </div>
-          </div>
+        {/* A pharmacy must not be activated with paperwork outstanding, so the
+            server's readiness answer gates this button rather than the UI
+            guessing. */}
+        <button
+          className="btn btn-success"
+          disabled={busy || !readiness?.ready_to_activate}
+          onClick={handleActivate}
+          title={
+            readiness?.ready_to_activate
+              ? 'Approve and activate this pharmacy'
+              : 'Every document must be verified before activation'
+          }
+        >
+          <Check size={15} /> Approve and activate
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function CHOnboarding() {
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await get('controlhub/onboarding');
+    // Real applications only. This screen previously invented a pharmacy that
+    // did not exist and never called the API at all.
+    if (res?.data) setApplications(res.data);
+    else toast.error('Could not load applications', { description: res?.error || 'Check the backend server.' });
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div>
+        <h1>Onboarding reviews</h1>
+        <p style={{ color: 'var(--text-2)', marginTop: '4px' }}>
+          Verify each pharmacy&apos;s compliance documents before allowing it to trade.
+        </p>
+      </div>
+
+      {loading && <p style={{ color: 'var(--text-3)' }}>Loading applications…</p>}
+      {!loading && applications.length === 0 && (
+        <p style={{ color: 'var(--text-3)' }}>No applications are awaiting review.</p>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {applications.map((app) => (
+          <ApplicationCard
+            key={app.tenant_id}
+            app={app}
+            onActivated={(id) => setApplications((prev) => prev.filter((a) => a.tenant_id !== id))}
+          />
         ))}
       </div>
     </div>

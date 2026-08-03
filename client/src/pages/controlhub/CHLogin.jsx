@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { ShieldCheck, Building2, FileCheck2, GitPullRequestArrow, Command } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { post } from '../../api/client';
+import AuthShell, { BackLink, container, item } from '../../components/AuthShell';
+
+const CAPABILITIES = [
+  { icon: Building2, label: 'Tenants', value: 'Platform-wide', note: 'approve and suspend' },
+  { icon: FileCheck2, label: 'Onboarding', value: 'Document review', note: 'verify before trading' },
+  { icon: GitPullRequestArrow, label: 'Maker-checker', value: 'Dual control', note: 'a second pair of eyes' },
+  { icon: ShieldCheck, label: 'Limits', value: 'Per pharmacy', note: 'operational settings' }
+];
 
 export default function CHLogin() {
   const [username, setUsername] = useState('superadmin');
@@ -20,65 +30,96 @@ export default function CHLogin() {
     try {
       const res = await post('controlhub/login', { username, password });
       if (res?.data?.token) {
-        login(res.data.user || { username: 'superadmin', role: 'SuperAdmin' }, res.data.token);
+        login(res.data.user || { username, role: 'SuperAdmin' }, res.data.token);
         navigate('/controlhub/dashboard');
         return;
-      } else if (res?.error) {
-        setError(res.error);
-        setLoading(false);
-        return;
       }
-    } catch (err) {
-      setError('Connection failed. Please check backend server.');
-      setLoading(false);
-      return;
+      setError(res?.error || 'Invalid credentials');
+    } catch {
+      setError('Connection failed. Please check the backend server.');
     }
 
-    setError('Invalid credentials');
     setLoading(false);
   };
 
   return (
-    <div className="login-container ch-login">
-      <div className="login-card">
-        <h2 style={{ color: '#8b5cf6', marginBottom: '8px' }}>Pharmacy ControlHub</h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '20px', textAlign: 'center' }}>Super-Admin Platform Portal</p>
+    <AuthShell
+      tint="#a78bfa"
+      brand={<><Command size={22} /> <span>ControlHub</span></>}
+      eyebrow="Platform administration"
+      headline={<>Every pharmacy,<br /><span>one console.</span></>}
+      sub="Review applications and their documents, approve pharmacies onto the platform, manage staff and roles, and set the operational limits each branch runs under."
+      cards={CAPABILITIES}
+      foot="Restricted to platform staff."
+    >
+      <motion.div className="login-form-wrap" variants={container} initial="hidden" animate="show">
+        <motion.div variants={item}>
+          <BackLink to="/" />
+        </motion.div>
 
-        {error && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#f87171', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem', textAlign: 'center' }}>
-            {error}
-          </div>
-        )}
+        <motion.div className="login-mobile-brand" variants={item}>
+          <Command size={20} /> <span>ControlHub</span>
+        </motion.div>
 
-        <form onSubmit={handleLogin}>
-          <div>
-            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Username:</label>
-            <input 
-              type="text" 
-              className="input-field" 
-              required 
-              value={username} 
-              onChange={e => setUsername(e.target.value)} 
-            />
-          </div>
+        <motion.div className="login-form-card" variants={item}>
+          <motion.div variants={item} style={{ marginBottom: '20px' }}>
+            <h2 className="login-title">Platform sign in</h2>
+            <p className="login-subtitle">Restricted to platform administrators.</p>
+          </motion.div>
 
-          <div>
-            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Password:</label>
-            <input 
-              type="password" 
-              className="input-field" 
-              required 
-              placeholder="Enter password..."
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-            />
-          </div>
+          {error && (
+            <motion.div
+              className="login-error"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              role="alert"
+            >
+              {error}
+            </motion.div>
+          )}
 
-          <button type="submit" className="btn btn-primary" style={{ background: '#8b5cf6', width: '100%', marginTop: '10px', padding: '12px' }} disabled={loading}>
-            {loading ? 'Authenticating...' : 'Login to ControlHub'}
-          </button>
-        </form>
-      </div>
-    </div>
+          <form onSubmit={handleLogin} className="login-form">
+            <motion.div variants={item}>
+              <label htmlFor="ch-username">Username</label>
+              <input
+                id="ch-username"
+                type="text"
+                className="input-field"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </motion.div>
+
+            <motion.div variants={item}>
+              <label htmlFor="ch-password">Password</label>
+              <input
+                id="ch-password"
+                type="password"
+                className="input-field"
+                required
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </motion.div>
+
+            <motion.button
+              type="submit"
+              className="btn btn-primary login-submit"
+              disabled={loading}
+              variants={item}
+            >
+              {loading ? 'Authenticating…' : 'Sign in'}
+            </motion.button>
+          </form>
+
+          <motion.p className="login-alt" variants={item}>
+            Pharmacy staff sign in <a href="/login">here</a>.
+          </motion.p>
+        </motion.div>
+      </motion.div>
+    </AuthShell>
   );
 }
