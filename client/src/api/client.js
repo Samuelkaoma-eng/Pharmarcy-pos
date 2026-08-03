@@ -1,0 +1,79 @@
+export const BASE_URL = 'http://localhost:5000/api';
+
+export const getHeaders = () => {
+  const token = localStorage.getItem('pos_auth_token');
+  const headers = { 'Content-Type': 'application/json', 'X-Tenant-ID': '11111111-1111-1111-1111-111111111111' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+};
+
+const formatUrl = (endpoint) => {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${BASE_URL}${cleanEndpoint}`;
+};
+
+export const get = async (endpoint) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), { headers: getHeaders() });
+    if (res.status === 401) { 
+      localStorage.removeItem('pos_auth_token'); 
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`API GET error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
+export const post = async (endpoint, data) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data || {})
+    });
+    if (res.status === 401) { 
+      localStorage.removeItem('pos_auth_token'); 
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`API POST error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
+export const put = async (endpoint, data) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data || {})
+    });
+    if (res.status === 401) { 
+      localStorage.removeItem('pos_auth_token'); 
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`API PUT error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
+export const patch = async (endpoint, data) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data || {})
+    });
+    if (res.status === 401) { 
+      localStorage.removeItem('pos_auth_token'); 
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`API PATCH error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
+export const api = { get, post, put, patch };
