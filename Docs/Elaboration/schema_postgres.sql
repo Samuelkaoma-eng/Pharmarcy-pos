@@ -4,6 +4,7 @@
 -- ====================================================================
 
 -- Drop tables in dependency order
+DROP TABLE IF EXISTS approval_requests CASCADE;
 DROP TABLE IF EXISTS onboarding_documents CASCADE;
 DROP TABLE IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS sale_items CASCADE;
@@ -50,6 +51,8 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('SuperAdmin','Admin','Pharmacist','Doctor','Cashier')),
+    avatar_url TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, username)
 );
@@ -211,16 +214,42 @@ CREATE TABLE payments (
 );
 
 -- 15. ONBOARDING DOCUMENTS
+-- Compliance paperwork a pharmacy submits with its application. The platform
+-- verifies each one before the pharmacy is allowed to trade.
 CREATE TABLE onboarding_documents (
     document_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     document_type VARCHAR(50) NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','VERIFIED','REJECTED')),
+    review_notes TEXT,
+    reviewed_by_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
     uploaded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 16. APPROVAL REQUESTS (maker-checker)
+-- Sensitive actions are proposed by one administrator and must be approved by
+-- a different one. The proposer may never approve their own request, which is
+-- enforced in the controller and asserted by the test suite.
+CREATE TABLE approval_requests (
+    request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    action VARCHAR(60) NOT NULL,
+    payload JSONB NOT NULL,
+    reason TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+    requested_by_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    decided_by_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    decision_notes TEXT,
+    requested_at TIMESTAMPTZ DEFAULT NOW(),
+    decided_at TIMESTAMPTZ,
+    CONSTRAINT approver_differs_from_requester CHECK (decided_by_id IS NULL OR decided_by_id <> requested_by_id)
+);
+
 -- INDEXES
+CREATE INDEX idx_documents_tenant ON onboarding_documents(tenant_id);
+CREATE INDEX idx_approvals_status ON approval_requests(status);
 CREATE INDEX idx_products_tenant ON products(tenant_id);
 CREATE INDEX idx_products_barcode ON products(tenant_id, barcode);
 CREATE INDEX idx_stock_movements_product ON stock_movements(product_id);

@@ -23,6 +23,9 @@ ON CONFLICT (tenant_id) DO NOTHING;
 -- 2. Insert Users (Password: 'password123' bcrypt hash)
 INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role) VALUES
 ('22222222-2222-2222-2222-2222222222ff', '00000000-0000-0000-0000-0000000000ff', 'superadmin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Platform Operator', 'SuperAdmin'),
+-- A second platform operator, because maker-checker requires the approver to
+-- be someone other than the requester.
+('22222222-2222-2222-2222-2222222222fe', '00000000-0000-0000-0000-0000000000ff', 'superadmin2', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Second Platform Operator', 'SuperAdmin'),
 ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'System Administrator', 'Admin'),
 ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', 'pharmacist', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Dr. Blessing Yabe (Pharmacist)', 'Pharmacist'),
 ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111111', 'cashier', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Samuel Kaoma (Cashier)', 'Cashier'),
@@ -93,3 +96,20 @@ ON CONFLICT (prescription_id) DO NOTHING;
 INSERT INTO prescription_items (prescription_item_id, prescription_id, product_id, dosage_instructions, quantity) VALUES
 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '55555555-5555-5555-5555-555555555502', 'Take 1 capsule 3 times daily after meals for 7 days', 1)
 ON CONFLICT (prescription_item_id) DO NOTHING;
+
+-- 11. Insert a pharmacy awaiting review, with its compliance documents.
+-- This gives the ControlHub onboarding queue something real to review rather
+-- than the hardcoded placeholder the screen used to invent.
+INSERT INTO tenants (tenant_id, name, address, phone, license_number, status, currency_symbol, owner_email)
+VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Ndola MediQuick Pharmacy', '45 President Avenue, Ndola, Zambia', '+260966888999', 'PHAR-ZM-2026-042', 'UNDER_REVIEW', 'K', 'admin@mediquick.zm')
+ON CONFLICT (tenant_id) DO NOTHING;
+
+INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role) VALUES
+('22222222-2222-2222-2222-2222222222c1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'mediquick_admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Ndola MediQuick Administrator', 'Admin')
+ON CONFLICT (user_id) DO NOTHING;
+
+INSERT INTO onboarding_documents (document_id, tenant_id, document_type, file_name, status) VALUES
+('dddddddd-dddd-dddd-dddd-ddddddddddd1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACY_LICENCE', 'mediquick-pharmacy-licence.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd2', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'OWNER_ID', 'owner-nrc-scan.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd3', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_INSPECTION', 'premises-inspection-form.pdf', 'PENDING')
+ON CONFLICT (document_id) DO NOTHING;

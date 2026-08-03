@@ -15,6 +15,9 @@ const prescriptionController = require('./controllers/prescriptionController');
 const saleController = require('./controllers/saleController');
 const receiptController = require('./controllers/receiptController');
 const agentController = require('./controllers/agentController');
+const documentController = require('./controllers/documentController');
+const userController = require('./controllers/userController');
+const approvalController = require('./controllers/approvalController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
 
@@ -83,6 +86,18 @@ controlHubRouter.put('/tenants/:id/status', controlHubController.updateTenantSta
 controlHubRouter.get('/tenants/:id/settings', controlHubController.getTenantSettings);
 controlHubRouter.put('/tenants/:id/settings', controlHubController.updateTenantSettings);
 controlHubRouter.get('/onboarding', controlHubController.getOnboarding);
+
+// Compliance document review
+controlHubRouter.get('/tenants/:id/documents', documentController.getDocuments);
+controlHubRouter.get('/tenants/:id/readiness', documentController.getReadiness);
+controlHubRouter.patch('/documents/:documentId/review', documentController.reviewDocument);
+
+// Maker-checker
+controlHubRouter.get('/approvals/actions', approvalController.getActions);
+controlHubRouter.get('/approvals', approvalController.getRequests);
+controlHubRouter.post('/approvals', approvalController.createRequest);
+controlHubRouter.patch('/approvals/:id/decide', approvalController.decide);
+
 app.use('/api/controlhub', controlHubRouter);
 
 // Tenant-scoped Routes (Authenticated)
@@ -95,6 +110,14 @@ apiRouter.get('/auth/profile', authController.getProfile);
 // Tenants Config
 apiRouter.get('/tenants/config', tenantController.getConfig);
 apiRouter.put('/tenants/config', requireRole('Admin'), tenantController.updateConfig);
+
+// Staff and roles. Listing is open to any signed-in member so the app can show
+// who recorded what; creating and changing accounts is an Admin action.
+apiRouter.get('/users', userController.getUsers);
+apiRouter.get('/users/roles', userController.getAssignableRoles);
+apiRouter.post('/users', requireRole('Admin'), userController.createUser);
+apiRouter.put('/users/:id', requireRole('Admin'), userController.updateUser);
+apiRouter.put('/profile/avatar', userController.updateOwnAvatar);
 
 // Products
 apiRouter.get('/products', productController.getProducts);
