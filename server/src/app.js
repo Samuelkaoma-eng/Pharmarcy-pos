@@ -21,6 +21,7 @@ const approvalController = require('./controllers/approvalController');
 const supplierController = require('./controllers/supplierController');
 const insuranceController = require('./controllers/insuranceController');
 const drugController = require('./controllers/drugController');
+const fiscalController = require('./controllers/fiscalController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
 
@@ -143,6 +144,12 @@ apiRouter.get('/insurance/schemes', insuranceController.getSchemes);
 apiRouter.post('/insurance/schemes', requireRole('Admin'), insuranceController.createScheme);
 apiRouter.post('/insurance/memberships', requireRole('Admin', 'Pharmacist'), insuranceController.enrolPatient);
 apiRouter.get('/insurance/coverage/:customerId', insuranceController.getCoverage);
+
+// SIMFIS: simulated fiscalisation. Demonstrates the Smart Invoice mechanism
+// this system is not authorised to perform. Everything it returns is marked.
+apiRouter.get('/fiscal/status', fiscalController.getStatus);
+apiRouter.post('/fiscal/sales/:id/fiscalise', requireRole('Admin', 'Pharmacist', 'Cashier'), fiscalController.fiscaliseSale);
+apiRouter.get('/fiscal/sales/:id/verify', fiscalController.verifySale);
 
 // Drug directory. Reference data, not clinical authority.
 apiRouter.get('/drugs/search', drugController.search);

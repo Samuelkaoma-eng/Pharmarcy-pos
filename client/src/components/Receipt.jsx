@@ -37,7 +37,7 @@ const PAYMENT_LABELS = {
   insurance: 'Insurance'
 };
 
-export default function Receipt({ sale, items, totals, tenant, servedBy, currency = 'K', paymentType, onClose }) {
+export default function Receipt({ sale, items, totals, tenant, servedBy, currency = 'K', paymentType, fiscal, onClose }) {
   // Escape closes the receipt. Capture phase so it does not reach the modal
   // sitting behind it and close both at once.
   useEffect(() => {
@@ -183,6 +183,36 @@ export default function Receipt({ sale, items, totals, tenant, servedBy, currenc
             <section className="doc-note">
               Dispensed against prescription <strong>{sale.prescription_id}</strong>. This receipt is
               proof of purchase and is not a record of clinical dispensing.
+            </section>
+          )}
+
+          {/* A genuine Smart Invoice reference, issued elsewhere by an approved
+              system and recorded here. */}
+          {sale?.smart_invoice_ref && (
+            <section className="doc-note">
+              ZRA Smart Invoice reference: <strong>{sale.smart_invoice_ref}</strong>
+            </section>
+          )}
+
+          {/* The simulation. Marked so heavily that it cannot be mistaken for
+              the real thing, which is the entire condition of showing it. */}
+          {fiscal && (
+            <section className="doc-note doc-note--simulated">
+              <strong className="doc-sim-banner">Simulated fiscalisation — not a valid tax invoice</strong>
+              <div className="doc-sim-grid">
+                <span>Reference</span><span>{fiscal.reference}</span>
+                <span>Device</span><span>{fiscal.device_id}</span>
+                <span>Counter</span><span>{fiscal.fiscal_counter}</span>
+                <span>Verification</span><span>{fiscal.verification_code}</span>
+              </div>
+              <p className="doc-sim-note">{fiscal.notice}</p>
+            </section>
+          )}
+
+          {!sale?.smart_invoice_ref && !fiscal && Number(totals?.vat) > 0 && (
+            <section className="doc-note">
+              VAT has been charged on this sale. The valid tax invoice for reclaim purposes is the
+              ZRA Smart Invoice, issued separately; this receipt is not a substitute for it.
             </section>
           )}
 

@@ -936,6 +936,34 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
   line-height: 1.6;
 }
 
+/* The simulation block is hatched and outlined so that on paper, in black and
+   white, it can never be taken for a genuine fiscal receipt. */
+.doc-note--simulated {
+  background: repeating-linear-gradient(
+    45deg, #fbfbf7, #fbfbf7 8px, #f2f2ea 8px, #f2f2ea 16px
+  );
+  border: 2px dashed #8a6d00;
+}
+
+.doc-sim-banner {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: #8a6d00;
+  margin-bottom: 7px;
+}
+
+.doc-sim-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 10.5px;
+  color: #111;
+}
+.doc-sim-grid span:nth-child(odd) { color: #777; }
+.doc-sim-note { margin-top: 7px; font-size: 9.5px; color: #6b5600; line-height: 1.5; }
+
 .doc-footer {
   margin-top: 22px;
   padding-top: 11px;

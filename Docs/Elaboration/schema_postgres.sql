@@ -214,7 +214,14 @@ CREATE TABLE sales (
     -- exists. It is recorded, never generated: this system is not a ZRA
     -- approved invoicing provider, and printing something resembling a Smart
     -- Invoice would put an invalid tax document in a customer's hands.
-    smart_invoice_ref VARCHAR(60)
+    smart_invoice_ref VARCHAR(60),
+    -- SIMFIS, the simulated fiscalisation service. Deliberately separate
+    -- columns: a simulated value must never be able to occupy the field that
+    -- holds a genuine reference issued by an approved system.
+    simulated_fiscal_ref VARCHAR(60),
+    simulated_fiscal_signature VARCHAR(64),
+    simulated_fiscal_counter INT,
+    simulated_fiscal_at TIMESTAMPTZ
 );
 
 -- 13. SALE ITEMS
