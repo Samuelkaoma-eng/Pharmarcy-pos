@@ -1,9 +1,13 @@
 const db = require('../config/db');
 
+// Standard rate. Applied only to products marked STANDARD; medicines are
+// zero-rated under Group 6 of the Zambian VAT (Zero-Rating) Order.
+const VAT_RATE = 0.16;
+
 exports.createSale = async (req, res) => {
   try {
     const { tenantId, userId } = req.user;
-    const { customerId, prescriptionId, items, paymentType = 'cash' } = req.body;
+    const { customerId, prescriptionId, items, paymentType = 'cash', smartInvoiceRef } = req.body;
     // items: [{productId, batchId, quantity}]
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -15,6 +19,7 @@ exports.createSale = async (req, res) => {
       await client.query('BEGIN');
 
       let computedSubtotal = 0;
+      let computedTaxAmount = 0;
       const validatedItems = [];
 
       // 1. Fetch official DB prices and calculate subtotals on server side
@@ -24,7 +29,7 @@ exports.createSale = async (req, res) => {
         }
 
         const prodRes = await client.query(
-          'SELECT product_id, name, selling_price, requires_prescription FROM products WHERE product_id = $1 AND tenant_id = $2',
+          'SELECT product_id, name, selling_price, requires_prescription, vat_treatment FROM products WHERE product_id = $1 AND tenant_id = $2',
           [item.productId, tenantId]
         );
 
@@ -103,6 +108,12 @@ exports.createSale = async (req, res) => {
         const itemSubtotal = unitPrice * item.quantity;
         computedSubtotal += itemSubtotal;
 
+        // VAT is decided per product, not as one blanket rate. Medicines are
+        // zero-rated under Group 6 of the Zambian VAT (Zero-Rating) Order, so
+        // charging 16% across the basket overcharged on every dispensed item.
+        const itemTax = product.vat_treatment === 'STANDARD' ? itemSubtotal * VAT_RATE : 0;
+        computedTaxAmount += itemTax;
+
         validatedItems.push({
           productId: product.product_id,
           batchId: resolvedBatchId,
@@ -112,8 +123,32 @@ exports.createSale = async (req, res) => {
         });
       }
 
-      const computedTaxAmount = computedSubtotal * 0.16; // 16% VAT
       const computedTotal = computedSubtotal + computedTaxAmount;
+
+      // Insurance. The scheme covers its declared share of the basket and the
+      // patient pays the balance; the sale total is unchanged either way.
+      let schemeId = null;
+      let schemeCovered = 0;
+
+      if (customerId) {
+        const cover = await client.query(
+          `SELECT s.scheme_id, s.cover_percent
+           FROM scheme_memberships m
+           JOIN insurance_schemes s ON s.scheme_id = m.scheme_id
+           WHERE m.customer_id = $1 AND m.tenant_id = $2
+             AND m.is_active AND s.is_active
+             AND (m.valid_until IS NULL OR m.valid_until >= CURRENT_DATE)
+           LIMIT 1`,
+          [customerId, tenantId]
+        );
+
+        if (cover.rows.length > 0) {
+          schemeId = cover.rows[0].scheme_id;
+          schemeCovered = computedTotal * (parseFloat(cover.rows[0].cover_percent) / 100);
+        }
+      }
+
+      const patientPayable = computedTotal - schemeCovered;
 
       // 2. Generate Receipt Number Sequence
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -122,9 +157,17 @@ exports.createSale = async (req, res) => {
 
       // 3. Insert Sale Record
       const saleRes = await client.query(
-        `INSERT INTO sales (tenant_id, receipt_number, subtotal, tax_amount, total, status, user_id, customer_id, prescription_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING sale_id`,
-        [tenantId, receiptNumber, computedSubtotal, computedTaxAmount, computedTotal, 'COMPLETED', userId, customerId || null, prescriptionId || null]
+        `INSERT INTO sales (tenant_id, receipt_number, subtotal, tax_amount, total, status, user_id,
+                            customer_id, prescription_id, scheme_id, scheme_covered, patient_payable,
+                            smart_invoice_ref)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING sale_id`,
+        [
+          tenantId, receiptNumber, computedSubtotal, computedTaxAmount, computedTotal, 'COMPLETED',
+          userId, customerId || null, prescriptionId || null, schemeId, schemeCovered, patientPayable,
+          // Recorded when the pharmacy's ZRA-approved system has issued one.
+          // Never generated here: this is not an approved invoicing provider.
+          smartInvoiceRef || null
+        ]
       );
       const saleId = saleRes.rows[0].sale_id;
 
@@ -168,7 +211,10 @@ exports.createSale = async (req, res) => {
           receipt_number: receiptNumber,
           subtotal: computedSubtotal.toFixed(2),
           tax_amount: computedTaxAmount.toFixed(2),
-          total: computedTotal.toFixed(2)
+          total: computedTotal.toFixed(2),
+          scheme_covered: schemeCovered.toFixed(2),
+          patient_payable: patientPayable.toFixed(2),
+          smart_invoice_ref: smartInvoiceRef || null
         }
       });
     } catch (err) {

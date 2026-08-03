@@ -13,6 +13,10 @@ module.exports = [
         exports: 'writable',
         Buffer: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        // Global fetch and AbortController are built in from Node 18.
+        fetch: 'readonly',
+        AbortController: 'readonly',
         describe: 'readonly',
         it: 'readonly',
         expect: 'readonly',

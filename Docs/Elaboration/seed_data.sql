@@ -108,8 +108,36 @@ INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role)
 ('22222222-2222-2222-2222-2222222222c1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'mediquick_admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Ndola MediQuick Administrator', 'Admin')
 ON CONFLICT (user_id) DO NOTHING;
 
+-- The document set ZAMRA actually requires to license a retail pharmacy.
 INSERT INTO onboarding_documents (document_id, tenant_id, document_type, file_name, status) VALUES
-('dddddddd-dddd-dddd-dddd-ddddddddddd1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACY_LICENCE', 'mediquick-pharmacy-licence.pdf', 'PENDING'),
-('dddddddd-dddd-dddd-dddd-ddddddddddd2', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'OWNER_ID', 'owner-nrc-scan.pdf', 'PENDING'),
-('dddddddd-dddd-dddd-dddd-ddddddddddd3', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_INSPECTION', 'premises-inspection-form.pdf', 'PENDING')
+('dddddddd-dddd-dddd-dddd-ddddddddddd1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PACRA_CERTIFICATE', 'pacra-certificate-of-incorporation.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd2', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'TPIN_CERTIFICATE', 'zra-tpin-certificate.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd3', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACIST_PRACTISING', 'hpcz-practising-certificate.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd4', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACIST_ID', 'pharmacist-nrc.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd5', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_PROOF', 'premises-lease-agreement.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd6', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_FLOOR_PLAN', 'dispensary-floor-plan.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd7', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'ZAMRA_INSPECTION', 'zamra-pre-licensing-inspection.pdf', 'PENDING')
 ON CONFLICT (document_id) DO NOTHING;
+
+-- 12. Suppliers, so received stock is traceable to who provided it.
+INSERT INTO suppliers (supplier_id, tenant_id, name, contact_name, phone, email, address, tpin, zamra_licence) VALUES
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', '11111111-1111-1111-1111-111111111111', 'Zambia Medical Stores Ltd', 'Grace Tembo', '+260211234567', 'orders@zmsl.zm', 'Plot 8, Mungwi Road, Lusaka', '1001234567', 'ZAMRA-WHL-2026-011'),
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', '11111111-1111-1111-1111-111111111111', 'Copperbelt Pharmaceuticals', 'Mwansa Bwalya', '+260212998877', 'sales@copperpharm.zm', 'Plot 21, Kitwe Industrial Area', '1009876543', 'ZAMRA-WHL-2026-042')
+ON CONFLICT (supplier_id) DO NOTHING;
+
+-- 13. An insurance scheme and a covered patient.
+INSERT INTO insurance_schemes (scheme_id, tenant_id, name, cover_percent, contact_phone) VALUES
+('ffffffff-ffff-ffff-ffff-fffffffffff1', '11111111-1111-1111-1111-111111111111', 'NHIMA', 100.00, '+260211445566'),
+('ffffffff-ffff-ffff-ffff-fffffffffff2', '11111111-1111-1111-1111-111111111111', 'Madison Health', 80.00, '+260211778899')
+ON CONFLICT (scheme_id) DO NOTHING;
+
+INSERT INTO scheme_memberships (membership_id, tenant_id, scheme_id, customer_id, member_number, valid_until) VALUES
+('11111111-2222-3333-4444-555555555551', '11111111-1111-1111-1111-111111111111', 'ffffffff-ffff-ffff-ffff-fffffffffff2', '33333333-3333-3333-3333-333333333301', 'MAD-4417-002', '2027-06-30')
+ON CONFLICT (scheme_id, customer_id) DO NOTHING;
+
+-- 14. A standard-rated sundry, to prove VAT is applied per product rather than
+-- as one blanket rate. Medicines above are zero-rated under Group 6 of the
+-- Zambian VAT (Zero-Rating) Order; a first aid kit is not a medicine.
+INSERT INTO products (product_id, tenant_id, barcode, name, category, cost_price, selling_price, unit_of_measure, requires_prescription, reorder_level, vat_treatment) VALUES
+('55555555-5555-5555-5555-555555555506', '11111111-1111-1111-1111-111111111111', '600123456706', 'First Aid Kit (Standard)', 'Sundries', 90.00, 180.00, 'kit', FALSE, 5, 'STANDARD')
+ON CONFLICT (product_id) DO NOTHING;

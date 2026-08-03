@@ -18,6 +18,9 @@ const agentController = require('./controllers/agentController');
 const documentController = require('./controllers/documentController');
 const userController = require('./controllers/userController');
 const approvalController = require('./controllers/approvalController');
+const supplierController = require('./controllers/supplierController');
+const insuranceController = require('./controllers/insuranceController');
+const drugController = require('./controllers/drugController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
 
@@ -91,6 +94,13 @@ controlHubRouter.get('/onboarding', controlHubController.getOnboarding);
 controlHubRouter.get('/tenants/:id/documents', documentController.getDocuments);
 controlHubRouter.get('/tenants/:id/readiness', documentController.getReadiness);
 controlHubRouter.patch('/documents/:documentId/review', documentController.reviewDocument);
+controlHubRouter.get('/documents/types', documentController.getRequiredTypes);
+controlHubRouter.get('/documents/:documentId/file', documentController.downloadDocument);
+controlHubRouter.post(
+  '/tenants/:id/documents',
+  documentController.upload.single('file'),
+  documentController.uploadDocument
+);
 
 // Maker-checker
 controlHubRouter.get('/approvals/actions', approvalController.getActions);
@@ -118,6 +128,25 @@ apiRouter.get('/users/roles', userController.getAssignableRoles);
 apiRouter.post('/users', requireRole('Admin'), userController.createUser);
 apiRouter.put('/users/:id', requireRole('Admin'), userController.updateUser);
 apiRouter.put('/profile/avatar', userController.updateOwnAvatar);
+
+// Suppliers and procurement
+apiRouter.get('/suppliers', supplierController.getSuppliers);
+apiRouter.post('/suppliers', requireRole('Admin', 'Pharmacist'), supplierController.createSupplier);
+apiRouter.put('/suppliers/:id', requireRole('Admin', 'Pharmacist'), supplierController.updateSupplier);
+apiRouter.get('/purchase-orders', supplierController.getPurchaseOrders);
+apiRouter.get('/purchase-orders/:id', supplierController.getPurchaseOrder);
+apiRouter.post('/purchase-orders', requireRole('Admin', 'Pharmacist'), supplierController.createPurchaseOrder);
+apiRouter.post('/purchase-orders/:id/receive', requireRole('Admin', 'Pharmacist'), supplierController.receiveAgainstOrder);
+
+// Insurance
+apiRouter.get('/insurance/schemes', insuranceController.getSchemes);
+apiRouter.post('/insurance/schemes', requireRole('Admin'), insuranceController.createScheme);
+apiRouter.post('/insurance/memberships', requireRole('Admin', 'Pharmacist'), insuranceController.enrolPatient);
+apiRouter.get('/insurance/coverage/:customerId', insuranceController.getCoverage);
+
+// Drug directory. Reference data, not clinical authority.
+apiRouter.get('/drugs/search', drugController.search);
+apiRouter.post('/drugs/interactions', drugController.checkBasket);
 
 // Products
 apiRouter.get('/products', productController.getProducts);

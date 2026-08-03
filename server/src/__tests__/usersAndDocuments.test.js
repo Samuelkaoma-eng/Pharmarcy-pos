@@ -141,7 +141,12 @@ describe('Onboarding document review', () => {
       .set('Authorization', `Bearer ${superAdminToken}`);
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body.data.length).toEqual(3);
+    // The seeded application carries the full ZAMRA set. Asserted as a
+    // minimum, because another suite may have uploaded against this tenant.
+    expect(res.body.data.length).toBeGreaterThanOrEqual(7);
+    expect(res.body.data.map((d) => d.document_type)).toEqual(
+      expect.arrayContaining(['PACRA_CERTIFICATE', 'PHARMACIST_PRACTISING', 'ZAMRA_INSPECTION'])
+    );
     documentId = res.body.data[0].document_id;
   });
 

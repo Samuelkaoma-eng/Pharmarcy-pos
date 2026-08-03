@@ -4,6 +4,11 @@
 -- ====================================================================
 
 -- Drop tables in dependency order
+DROP TABLE IF EXISTS scheme_memberships CASCADE;
+DROP TABLE IF EXISTS insurance_schemes CASCADE;
+DROP TABLE IF EXISTS purchase_order_items CASCADE;
+DROP TABLE IF EXISTS purchase_orders CASCADE;
+DROP TABLE IF EXISTS suppliers CASCADE;
 DROP TABLE IF EXISTS approval_requests CASCADE;
 DROP TABLE IF EXISTS onboarding_documents CASCADE;
 DROP TABLE IF EXISTS payments CASCADE;
@@ -96,6 +101,17 @@ CREATE TABLE products (
     requires_prescription BOOLEAN DEFAULT FALSE,
     reorder_level INT DEFAULT 10,
     state VARCHAR(20) DEFAULT 'ACTIVE' CHECK (state IN ('ACTIVE','DISCONTINUED')),
+    -- Medicines and drugs fall under Group 6 of the Zambian VAT (Zero-Rating)
+    -- Order, so they carry no VAT. Sundries sold alongside them do. Charging a
+    -- flat 16% on everything overcharged the customer on every dispensed item,
+    -- which is why this is per product and defaults to zero-rated.
+    vat_treatment VARCHAR(20) NOT NULL DEFAULT 'ZERO_RATED'
+        CHECK (vat_treatment IN ('ZERO_RATED','STANDARD','EXEMPT')),
+    -- Reference data pulled from the openFDA NDC directory when the product
+    -- was created, kept so the catalogue entry is traceable to a source.
+    generic_name VARCHAR(150),
+    manufacturer VARCHAR(150),
+    ndc_code VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -188,7 +204,17 @@ CREATE TABLE sales (
     status VARCHAR(20) DEFAULT 'COMPLETED' CHECK (status IN ('PENDING','COMPLETED','REFUNDED','CANCELLED')),
     user_id UUID REFERENCES users(user_id),
     customer_id UUID REFERENCES customers(customer_id),
-    prescription_id UUID REFERENCES prescriptions(prescription_id)
+    prescription_id UUID REFERENCES prescriptions(prescription_id),
+    -- What an insurance scheme covered, and what the patient paid themselves.
+    -- The foreign key is added once insurance_schemes exists, further down.
+    scheme_id UUID,
+    scheme_covered NUMERIC(10,2) NOT NULL DEFAULT 0,
+    patient_payable NUMERIC(10,2) NOT NULL DEFAULT 0,
+    -- The reference of the ZRA Smart Invoice issued for this sale, where one
+    -- exists. It is recorded, never generated: this system is not a ZRA
+    -- approved invoicing provider, and printing something resembling a Smart
+    -- Invoice would put an invalid tax document in a customer's hands.
+    smart_invoice_ref VARCHAR(60)
 );
 
 -- 13. SALE ITEMS
@@ -214,18 +240,100 @@ CREATE TABLE payments (
 );
 
 -- 15. ONBOARDING DOCUMENTS
--- Compliance paperwork a pharmacy submits with its application. The platform
--- verifies each one before the pharmacy is allowed to trade.
+-- Compliance paperwork a pharmacy submits with its application. The document
+-- types mirror what ZAMRA actually requires to license a retail pharmacy in
+-- Zambia, rather than generic placeholders.
 CREATE TABLE onboarding_documents (
     document_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
-    document_type VARCHAR(50) NOT NULL,
+    document_type VARCHAR(50) NOT NULL CHECK (document_type IN (
+        'PACRA_CERTIFICATE',        -- Certificate of incorporation / business registration
+        'TPIN_CERTIFICATE',         -- ZRA taxpayer identification
+        'PHARMACIST_PRACTISING',    -- HPCZ practising certificate of the pharmacist in charge
+        'PHARMACIST_ID',            -- NRC / passport of the pharmacist in charge
+        'PREMISES_PROOF',           -- Title deed or lease agreement
+        'PREMISES_FLOOR_PLAN',      -- Layout of the dispensary and storage
+        'ZAMRA_INSPECTION'          -- Pre-licensing inspection report
+    )),
     file_name VARCHAR(255) NOT NULL,
+    -- The stored file itself. Reviewing paperwork without being able to open it
+    -- is not a review, so these are uploaded and served back.
+    stored_path TEXT,
+    mime_type VARCHAR(100),
+    size_bytes INT,
     status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','VERIFIED','REJECTED')),
     review_notes TEXT,
     reviewed_by_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
     reviewed_at TIMESTAMPTZ,
     uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 17. SUPPLIERS
+-- Who a pharmacy buys from. Stock previously appeared with no record of its
+-- origin, so nothing could be traced back when a batch was recalled.
+CREATE TABLE suppliers (
+    supplier_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    name VARCHAR(150) NOT NULL,
+    contact_name VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    address TEXT,
+    tpin VARCHAR(30),
+    zamra_licence VARCHAR(50),  -- Wholesalers must themselves be ZAMRA licensed
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, name)
+);
+
+-- 18. PURCHASE ORDERS
+CREATE TABLE purchase_orders (
+    po_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    supplier_id UUID NOT NULL REFERENCES suppliers(supplier_id) ON DELETE RESTRICT,
+    po_number VARCHAR(40) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
+        CHECK (status IN ('DRAFT','SENT','PARTIALLY_RECEIVED','RECEIVED','CANCELLED')),
+    expected_date DATE,
+    notes TEXT,
+    raised_by_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, po_number)
+);
+
+CREATE TABLE purchase_order_items (
+    po_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    po_id UUID NOT NULL REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
+    quantity_ordered INT NOT NULL CHECK (quantity_ordered > 0),
+    quantity_received INT NOT NULL DEFAULT 0 CHECK (quantity_received >= 0),
+    unit_cost NUMERIC(10,2) NOT NULL DEFAULT 0
+);
+
+-- 19. INSURANCE SCHEMES
+CREATE TABLE insurance_schemes (
+    scheme_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    name VARCHAR(150) NOT NULL,
+    -- The share the scheme pays; the patient covers the remainder.
+    cover_percent NUMERIC(5,2) NOT NULL DEFAULT 100
+        CHECK (cover_percent >= 0 AND cover_percent <= 100),
+    contact_phone VARCHAR(20),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, name)
+);
+
+-- A patient's membership of a scheme, which is what makes them coverable.
+CREATE TABLE scheme_memberships (
+    membership_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    scheme_id UUID NOT NULL REFERENCES insurance_schemes(scheme_id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    member_number VARCHAR(60) NOT NULL,
+    valid_until DATE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    UNIQUE(scheme_id, customer_id)
 );
 
 -- 16. APPROVAL REQUESTS (maker-checker)
@@ -247,9 +355,25 @@ CREATE TABLE approval_requests (
     CONSTRAINT approver_differs_from_requester CHECK (decided_by_id IS NULL OR decided_by_id <> requested_by_id)
 );
 
+-- Deferred foreign key: sales is declared before insurance_schemes exists.
+ALTER TABLE sales
+    ADD CONSTRAINT sales_scheme_fk
+    FOREIGN KEY (scheme_id) REFERENCES insurance_schemes(scheme_id) ON DELETE SET NULL;
+
+-- Every stock movement can now name the supplier it came from, which is what
+-- makes a batch traceable back to its source during a recall.
+ALTER TABLE stock_movements
+    ADD COLUMN supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE SET NULL;
+
+ALTER TABLE product_batches
+    ADD COLUMN supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE SET NULL;
+
 -- INDEXES
 CREATE INDEX idx_documents_tenant ON onboarding_documents(tenant_id);
 CREATE INDEX idx_approvals_status ON approval_requests(status);
+CREATE INDEX idx_suppliers_tenant ON suppliers(tenant_id);
+CREATE INDEX idx_po_tenant_status ON purchase_orders(tenant_id, status);
+CREATE INDEX idx_memberships_customer ON scheme_memberships(customer_id);
 CREATE INDEX idx_products_tenant ON products(tenant_id);
 CREATE INDEX idx_products_barcode ON products(tenant_id, barcode);
 CREATE INDEX idx_stock_movements_product ON stock_movements(product_id);

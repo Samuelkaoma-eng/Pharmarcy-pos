@@ -85,10 +85,15 @@ describe('Checkout expiry guard', () => {
   it('refuses to dispense more than the pharmacy holds', async () => {
     // Without this guard the sale succeeded and drove quantity_on_hand
     // negative, which showed up on the dashboard as "-2 remaining".
-    const before = await pool.query('SELECT quantity_on_hand FROM product_batches WHERE batch_id = $1', [
-      SEED.paracetamolBatch
-    ]);
-    const held = before.rows[0].quantity_on_hand;
+    // Summed across every in-date batch, since other suites may have received
+    // more stock for this product before this one runs.
+    const before = await pool.query(
+      `SELECT COALESCE(SUM(quantity_on_hand), 0)::int AS held
+       FROM product_batches
+       WHERE product_id = $1 AND expiry_date >= CURRENT_DATE AND quantity_on_hand > 0`,
+      [SEED.paracetamol]
+    );
+    const held = before.rows[0].held;
 
     const res = await request(app)
       .post('/api/sales')
@@ -98,10 +103,13 @@ describe('Checkout expiry guard', () => {
     expect(res.statusCode).toEqual(400);
     expect(res.body.error).toMatch(/INSUFFICIENT STOCK/);
 
-    const after = await pool.query('SELECT quantity_on_hand FROM product_batches WHERE batch_id = $1', [
-      SEED.paracetamolBatch
-    ]);
-    expect(after.rows[0].quantity_on_hand).toEqual(held);
+    const after = await pool.query(
+      `SELECT COALESCE(SUM(quantity_on_hand), 0)::int AS held
+       FROM product_batches
+       WHERE product_id = $1 AND expiry_date >= CURRENT_DATE AND quantity_on_hand > 0`,
+      [SEED.paracetamol]
+    );
+    expect(after.rows[0].held).toEqual(held);
   });
 
   it('refuses an over-sized draw on a named batch', async () => {
