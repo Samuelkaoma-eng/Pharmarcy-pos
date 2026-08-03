@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+*.log
+desktop.ini
+~$*
+.DS_Store
+Thumbs.db
+coverage/
+.vscode/
+.idea/
