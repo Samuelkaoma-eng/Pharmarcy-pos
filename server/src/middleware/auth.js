@@ -1,14 +1,13 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pharmacy_pos_super_secret_key_123';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'pharmacy_pos_refresh_secret_key_456';
 
+// Short-lived on purpose. An access token cannot be revoked once issued, so the
+// window in which a stolen one is useful is kept to an hour; the session is
+// carried instead by the rotating refresh chain in `services/refreshTokens.js`,
+// which *can* be revoked.
 const generateToken = (payload) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-};
-
-const generateRefreshToken = (payload) => {
-  return jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
 };
 
 const authenticate = (req, res, next) => {
@@ -51,7 +50,5 @@ module.exports = {
   requireRole,
   controlHubOnly,
   generateToken,
-  generateRefreshToken,
-  JWT_SECRET,
-  REFRESH_SECRET
+  JWT_SECRET
 };

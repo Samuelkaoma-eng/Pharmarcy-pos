@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { initDb, pool } = require('./config/db');
 
@@ -22,14 +24,37 @@ const supplierController = require('./controllers/supplierController');
 const insuranceController = require('./controllers/insuranceController');
 const drugController = require('./controllers/drugController');
 const fiscalController = require('./controllers/fiscalController');
-const tillController = require('./controllers/tillController');
-const reportController = require('./controllers/reportController');
 const insightController = require('./controllers/insightController');
 const recallController = require('./controllers/recallController');
+const tillController = require('./controllers/tillController');
+const reportController = require('./controllers/reportController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
 
 const app = express();
+
+// Security headers. The API serves JSON and one server-rendered receipt, never
+// a page that embeds third-party content, so the defaults are close to right.
+//
+// crossOriginResourcePolicy is relaxed to same-site because the client is
+// served from a different port in development and fetches uploaded documents
+// and the receipt from here. contentSecurityPolicy is disabled on this API
+// because it protects documents, and the only document this origin serves is
+// the receipt, which sets its own.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' }
+  })
+);
+
+// The refresh token travels as an HttpOnly cookie, so the parser has to run
+// before any route that reads it.
+app.use(cookieParser());
+
+// Behind a proxy in deployment, so req.ip is the client rather than the hop.
+// Rate limiting and the IP recorded against a refresh chain both depend on it.
+app.set('trust proxy', 1);
 
 // CORS Allowlist
 const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
@@ -82,7 +107,10 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/tenants/directory', tenantController.getDirectory);
 app.post('/api/auth/login', authLimiter, authController.login);
 app.post('/api/controlhub/login', authLimiter, authController.controlHubLogin);
+// Both read the refresh cookie rather than a body, and both are safe to call
+// with a dead session: refresh says so, sign-out succeeds regardless.
 app.post('/api/auth/refresh', authController.refresh);
+app.post('/api/auth/logout', authController.logout);
 app.post('/api/onboarding/register', controlHubController.registerTenant);
 
 // ControlHub Routes (SuperAdmin only)

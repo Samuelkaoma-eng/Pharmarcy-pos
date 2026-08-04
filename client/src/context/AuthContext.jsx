@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { get } from '../api/client';
+import { get, logout as apiLogout, setSessionLostHandler } from '../api/client';
 
 const AuthContext = createContext();
 
@@ -31,6 +31,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('pos_user')) || null);
   const [token, setToken] = useState(() => localStorage.getItem('pos_auth_token') || null);
   const [tenant, setTenant] = useState(null);
+  // A stored user is a claim, not proof. Until the server confirms the session
+  // the app must not render a workspace — the previous version trusted
+  // localStorage, so an expired token still showed the whole shell with empty
+  // panels and "Authentication required" scattered through it.
+  const [checking, setChecking] = useState(() => Boolean(localStorage.getItem('pos_auth_token')));
 
   const loadTenant = useCallback(async () => {
     if (!localStorage.getItem('pos_auth_token')) return;
@@ -41,21 +46,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Branding follows the signed-in pharmacy, so it is loaded on sign-in and
-  // whenever the app is reopened with a stored session.
-  useEffect(() => {
-    if (token) loadTenant();
-  }, [token, loadTenant]);
-
-  const login = (userData, authToken) => {
-    setUser(userData);
-    setToken(authToken);
-    localStorage.setItem('pos_user', JSON.stringify(userData));
-    localStorage.setItem('pos_auth_token', authToken);
-    if (userData?.tenantId) localStorage.setItem('pos_tenant_id', userData.tenantId);
-  };
-
-  const logout = () => {
+  const clearSession = useCallback(() => {
     setUser(null);
     setToken(null);
     setTenant(null);
@@ -63,6 +54,52 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('pos_auth_token');
     localStorage.removeItem('pos_tenant_id');
     applyTheme(FALLBACK_PRIMARY);
+  }, []);
+
+  // The API client calls this when a refresh could not recover the session, so
+  // one dead request tears the workspace down rather than leaving the user
+  // clicking a screen where nothing works.
+  useEffect(() => {
+    setSessionLostHandler(() => {
+      clearSession();
+      setChecking(false);
+    });
+    return () => setSessionLostHandler(null);
+  }, [clearSession]);
+
+  // Branding follows the signed-in pharmacy, so it is loaded on sign-in and
+  // whenever the app is reopened with a stored session.
+  //
+  // This is also the session check: `tenants/config` is authenticated, so a
+  // stored token that the server will not accept fails here. The API client
+  // attempts one rotation first, and only a failed rotation clears the session.
+  useEffect(() => {
+    let active = true;
+    if (!token) {
+      setChecking(false);
+      return undefined;
+    }
+    (async () => {
+      await loadTenant();
+      if (active) setChecking(false);
+    })();
+    return () => { active = false; };
+  }, [token, loadTenant]);
+
+  const login = (userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+    setChecking(false);
+    localStorage.setItem('pos_user', JSON.stringify(userData));
+    localStorage.setItem('pos_auth_token', authToken);
+    if (userData?.tenantId) localStorage.setItem('pos_tenant_id', userData.tenantId);
+  };
+
+  // Tell the server first, so the refresh family is revoked. Clearing
+  // localStorage alone left a copied token working until it expired.
+  const logout = () => {
+    void apiLogout();
+    clearSession();
   };
 
   return (
@@ -76,7 +113,10 @@ export const AuthProvider = ({ children }) => {
         refreshTenant: loadTenant,
         currency: tenant?.currency_symbol || 'K',
         pharmacyName: tenant?.name || 'Pharmacy POS',
-        isAuthenticated: !!user
+        // True only while a stored session is still being confirmed. Routes use
+        // it to hold rather than to decide, so nothing renders on a guess.
+        checking,
+        isAuthenticated: !!user && !!token
       }}
     >
       {children}

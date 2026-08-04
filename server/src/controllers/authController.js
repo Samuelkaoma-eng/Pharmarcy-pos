@@ -1,7 +1,36 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
-const { generateToken, generateRefreshToken, REFRESH_SECRET } = require('../middleware/auth');
-const jwt = require('jsonwebtoken');
+const { generateToken } = require('../middleware/auth');
+const refreshTokens = require('../services/refreshTokens');
+
+// The refresh token is written here and nowhere else, and never appears in a
+// response body. That is the whole reason for the cookie: JavaScript — and so
+// any cross-site scripting — cannot read it.
+const REFRESH_COOKIE = 'pos_refresh';
+// Scoped to the auth routes, so it is not attached to the hundred other API
+// calls that have no use for it.
+const REFRESH_PATH = '/api/auth';
+
+const cookieOptions = () => ({
+  httpOnly: true,
+  sameSite: 'lax',
+  // The client is served from the same origin through the dev proxy, so Lax is
+  // enough and no cross-site exemption is needed. Secure follows the
+  // environment: a cookie marked Secure is dropped over plain http, which would
+  // silently break local development.
+  secure: process.env.NODE_ENV === 'production',
+  path: REFRESH_PATH,
+  maxAge: refreshTokens.TTL_DAYS * 24 * 60 * 60 * 1000
+});
+
+const setRefreshCookie = (res, raw) => res.cookie(REFRESH_COOKIE, raw, cookieOptions());
+
+const clearRefreshCookie = (res) =>
+  res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(), maxAge: undefined });
+
+const readRefreshCookie = (req) => req.cookies?.[REFRESH_COOKIE] || null;
+
+const clientIp = (req) => req.ip || req.socket?.remoteAddress || null;
 
 exports.login = async (req, res) => {
   try {
@@ -47,14 +76,22 @@ exports.login = async (req, res) => {
 
     const payload = { userId: user.user_id, tenantId: user.tenant_id, role: user.role, username: user.username };
     const token = generateToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+
+    // A new chain per sign-in, so signing out on one terminal leaves the others
+    // working. The raw value goes out only in the Set-Cookie header.
+    const raw = await refreshTokens.issue({
+      userId: user.user_id,
+      tenantId: user.tenant_id,
+      ip: clientIp(req),
+      userAgent: req.get('user-agent')
+    });
+    setRefreshCookie(res, raw);
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
         token,
-        refreshToken,
         user: {
           id: user.user_id,
           username: user.username,
@@ -95,7 +132,16 @@ exports.controlHubLogin = async (req, res) => {
 
     const payload = { userId: user.user_id, tenantId: user.tenant_id, role: 'SuperAdmin', username: user.username };
     const token = generateToken(payload);
-    
+
+    // Platform operators get a revocable session too. If anything, more so.
+    const raw = await refreshTokens.issue({
+      userId: user.user_id,
+      tenantId: user.tenant_id,
+      ip: clientIp(req),
+      userAgent: req.get('user-agent')
+    });
+    setRefreshCookie(res, raw);
+
     return res.json({
       success: true,
       message: 'ControlHub login successful',
@@ -110,22 +156,74 @@ exports.controlHubLogin = async (req, res) => {
   }
 };
 
+// Exchanges the refresh cookie for a new access token and rotates the cookie.
+// The response body carries only the access token and the user; the refresh
+// value leaves solely in the Set-Cookie header.
 exports.refresh = async (req, res) => {
   try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'Refresh token required' });
+    const { user, next } = await refreshTokens.rotate({
+      raw: readRefreshCookie(req),
+      ip: clientIp(req),
+      userAgent: req.get('user-agent')
+    });
 
-    const decoded = jwt.verify(token, REFRESH_SECRET);
-    const payload = { userId: decoded.userId, tenantId: decoded.tenantId, role: decoded.role, username: decoded.username };
-    
-    res.json({
+    const token = generateToken({
+      userId: user.user_id,
+      tenantId: user.tenant_id,
+      role: user.role,
+      username: user.username
+    });
+
+    setRefreshCookie(res, next);
+
+    return res.json({
       success: true,
       message: 'Token refreshed',
-      data: { token: generateToken(payload) }
+      data: {
+        token,
+        user: {
+          id: user.user_id,
+          username: user.username,
+          full_name: user.full_name,
+          role: user.role,
+          tenantId: user.tenant_id
+        }
+      }
     });
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired refresh token' });
+  } catch (error) {
+    if (error.code === refreshTokens.RACED) {
+      // Another request rotated a moment ago and this caller now holds a newer
+      // cookie. 409 rather than 401 so the client retries instead of tearing
+      // the session down over a double-click.
+      return res.status(409).json({ error: 'This session was refreshed concurrently — retry' });
+    }
+
+    if (error.code === refreshTokens.REJECTED) {
+      // Unknown, expired, revoked or replayed all answer identically. The
+      // distinctions are only useful to somebody probing.
+      clearRefreshCookie(res);
+      return res.status(401).json({ error: 'Session expired — sign in again' });
+    }
+
+    console.error('Refresh error:', error.message);
+    return res.status(500).json({ error: 'Could not refresh the session' });
   }
+};
+
+// Ends the session on the server, which clearing localStorage never did: before
+// this, a copied token stayed valid until it expired.
+//
+// Always succeeds. Signing out with an already-dead cookie should still leave
+// the caller signed out, not hand them an error they can do nothing about.
+exports.logout = async (req, res) => {
+  try {
+    const family = await refreshTokens.familyForToken(readRefreshCookie(req));
+    if (family) await refreshTokens.revokeFamilyById(family);
+  } catch (error) {
+    console.error('Logout error:', error.message);
+  }
+  clearRefreshCookie(res);
+  return res.json({ success: true, message: 'Signed out' });
 };
 
 exports.getProfile = async (req, res) => {
