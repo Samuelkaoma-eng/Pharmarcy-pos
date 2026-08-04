@@ -267,7 +267,7 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="table-card">
         <table className="cart-table">
           <thead>
             <tr>
@@ -406,7 +406,7 @@ export default function Inventory() {
             <input type="text" className="input-field" placeholder="e.g. 600123456709"
               value={productForm.barcode} onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Category</label>
               <select className="input-field" value={productForm.category}
@@ -420,7 +420,7 @@ export default function Inventory() {
                 value={productForm.dosage} onChange={(e) => setProductForm({ ...productForm, dosage: e.target.value })} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Cost price ({currency})</label>
               <input type="number" step="0.01" min="0" className="input-field" placeholder="0.00"
@@ -480,7 +480,7 @@ export default function Inventory() {
             <input type="text" className="input-field" required placeholder="e.g. BATCH-2026-X"
               value={receiveForm.batch_number} onChange={(e) => setReceiveForm({ ...receiveForm, batch_number: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Quantity received</label>
               <input type="number" className="input-field" required min="1"

@@ -93,7 +93,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className="grid-2" style={{ gap: '12px' }}>
           <div>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Currency Symbol:</label>
             <input type="text" className="input-field" value={config.currency_symbol} onChange={(e) => setConfig({ ...config, currency_symbol: e.target.value })} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Barcode, Printer, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Barcode, Printer, CheckCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import NumberFlow from '@number-flow/react';
 import { get, post } from '../api/client';
@@ -35,6 +35,11 @@ export default function POSCheckout() {
   // `undefined` means not looked up yet, `null` means looked up and not covered.
   // The two must not render the same way: one is silence, the other is an answer.
   const [coverage, setCoverage] = useState(undefined);
+  // Below 900px the basket is a bottom sheet rather than a column. Collapsed it
+  // still shows the item count, the running total and the button that takes the
+  // money — the three things a cashier must be able to reach without hunting.
+  // The class does nothing at desktop widths, where the basket is always open.
+  const [cartOpen, setCartOpen] = useState(false);
 
   const {
     cart, 
@@ -218,25 +223,25 @@ export default function POSCheckout() {
     <div className="pos-main">
       {/* LEFT CATALOG */}
       <div className="catalog-section">
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        <div className="pos-search-row" style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <form onSubmit={handleBarcodeScan} style={{ display: 'flex', gap: '8px', flex: 1 }}>
-            <input 
-              type="text" 
-              placeholder="Scan Barcode (e.g. 600123456701)..." 
-              className="input-field" 
-              value={barcodeInput} 
-              onChange={e => setBarcodeInput(e.target.value)} 
+            <input
+              type="text"
+              placeholder="Scan Barcode (e.g. 600123456701)..."
+              className="input-field"
+              value={barcodeInput}
+              onChange={e => setBarcodeInput(e.target.value)}
             />
             <button type="submit" className="btn btn-primary"><Barcode size={18} /> Scan</button>
           </form>
 
-          <input 
-            type="text" 
-            placeholder="Search drug..." 
-            className="input-field" 
+          <input
+            type="text"
+            placeholder="Search drug..."
+            className="input-field pos-search-input"
             style={{ width: '200px' }}
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
           />
         </div>
 
@@ -281,8 +286,35 @@ export default function POSCheckout() {
         </div>
       </div>
 
-      {/* RIGHT BASKET */}
-      <div className="cart-section">
+      {/* Tapping away from an open sheet closes it. Phone only — at desktop
+          widths the basket is a column and there is nothing to close. */}
+      <div
+        className={`cart-scrim ${cartOpen ? 'is-open' : ''}`}
+        onClick={() => setCartOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* RIGHT BASKET — a bottom sheet below 900px, a column above it */}
+      <div className={`cart-section ${cartOpen ? 'is-open' : ''}`}>
+        {/* The permanently visible part of the sheet on a phone. It is a real
+            button because it is the control that opens the basket. */}
+        <button
+          type="button"
+          className="cart-handle"
+          onClick={() => setCartOpen((open) => !open)}
+          aria-expanded={cartOpen}
+        >
+          <span className="cart-handle-label">
+            <ShoppingCart size={16} />
+            {cart.length} {cart.length === 1 ? 'item' : 'items'}
+          </span>
+          <span className="cart-handle-total">
+            {currency} <NumberFlow value={grandTotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
+          </span>
+          {cartOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+        </button>
+
+        <div className="cart-scroll">
         <div>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <ShoppingCart size={20} color="#3b82f6" /> Active Sale Basket ({cart.length})
@@ -406,10 +438,10 @@ export default function POSCheckout() {
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             {['cash', 'card', 'mobile'].map(type => (
-              <button 
-                key={type} 
-                className={`btn ${paymentType === type ? 'btn-success' : 'btn-secondary'}`}
-                style={{ flex: 1, textTransform: 'capitalize', padding: '6px' }}
+              <button
+                key={type}
+                className={`btn pay-btn ${paymentType === type ? 'btn-success' : 'btn-secondary'}`}
+                style={{ flex: 1, textTransform: 'capitalize' }}
                 onClick={() => setPaymentType(type)}
               >
                 {type}
@@ -449,9 +481,15 @@ export default function POSCheckout() {
               </>
             )}
           </div>
+        </div>
+        </div>
 
-          <button className="btn btn-success" style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '1rem' }} onClick={handleCompleteSale} disabled={cart.length === 0}>
-            <CheckCircle size={18} /> Complete Sale & Print Receipt
+        {/* Outside the scrolling region on purpose: on a phone this strip stays
+            put at the bottom of the sheet whether the basket is open or shut, so
+            taking the money is never something you have to scroll to find. */}
+        <div className="cart-footer">
+          <button className="btn btn-success cart-complete" onClick={handleCompleteSale} disabled={cart.length === 0}>
+            <CheckCircle size={18} /> Complete Sale &amp; Print Receipt
           </button>
         </div>
       </div>

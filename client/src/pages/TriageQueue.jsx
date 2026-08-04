@@ -342,7 +342,7 @@ export default function TriageQueue() {
         title={vitalsFor ? `Vitals — #${vitalsFor.queue_number} ${vitalsFor.patient_name}` : 'Vitals'}
       >
         <form onSubmit={saveVitals} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <Field label="Blood pressure" placeholder="120/80" value={vitalsForm.bp} onChange={(x) => setVitalsForm({ ...vitalsForm, bp: x })} />
             <Field label="Heart rate (bpm)" placeholder="72" value={vitalsForm.heartRate} onChange={(x) => setVitalsForm({ ...vitalsForm, heartRate: x })} />
             <Field label="Temperature (°C)" placeholder="37.1" value={vitalsForm.temperature} onChange={(x) => setVitalsForm({ ...vitalsForm, temperature: x })} />

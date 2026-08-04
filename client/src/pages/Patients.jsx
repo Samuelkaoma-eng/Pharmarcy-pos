@@ -99,7 +99,7 @@ export default function Patients() {
       </div>
 
       {/* PATIENTS TABLE */}
-      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="table-card">
         <table className="cart-table">
           <thead>
             <tr>
@@ -139,7 +139,7 @@ export default function Patients() {
             <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Full Patient Name:</label>
             <input type="text" className="input-field" required placeholder="e.g. Chipego Mukimba" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>NRC Number:</label>
               <input type="text" className="input-field" placeholder="111222/10/1" value={form.nrc} onChange={(e) => setForm({ ...form, nrc: e.target.value })} />
@@ -149,7 +149,7 @@ export default function Patients() {
               <input type="text" className="input-field" required placeholder="+260971234567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Gender:</label>
               <select className="input-field" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>

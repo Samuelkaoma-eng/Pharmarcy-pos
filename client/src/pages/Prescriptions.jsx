@@ -176,7 +176,7 @@ export default function Prescriptions() {
         </div>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="table-card">
         <table className="cart-table">
           <thead>
             <tr>
@@ -240,7 +240,7 @@ export default function Prescriptions() {
           <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-2)' }}>Loading…</div>
         ) : selected ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="grid-2" style={{ gap: '10px' }}>
               <Detail label="Patient" value={selected.patient_name} />
               <Detail label="Phone" value={selected.patient_phone} />
               <Detail label="NRC" value={selected.patient_nrc} />
@@ -331,7 +331,7 @@ export default function Prescriptions() {
       {/* Issue */}
       <Modal isOpen={showNew} onClose={() => setShowNew(false)} title="Issue a prescription">
         <form onSubmit={issue} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid-2" style={{ gap: '10px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Patient</label>
               <select className="input-field" value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} required>

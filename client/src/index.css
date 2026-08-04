@@ -59,7 +59,7 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100svh;
   overflow-x: hidden;
   font-size: 14px;
   line-height: 1.5;
@@ -82,8 +82,15 @@ a { color: inherit; }
 
 /* ============================================================
    APP SHELL
+
+   100svh, never 100vh. On iOS 100vh is the *large* viewport
+   height — the page is laid out as though the Safari toolbar
+   were not there — so a full-height shell runs underneath it
+   and adds a toolbar's worth of phantom scroll to every screen.
+   svh is the small viewport height, which is what is actually
+   visible with the browser chrome showing.
    ============================================================ */
-.pos-layout { display: flex; height: 100vh; overflow: hidden; }
+.pos-layout { display: flex; height: 100svh; overflow: hidden; }
 
 .sidebar {
   width: 232px;
@@ -94,7 +101,7 @@ a { color: inherit; }
   flex-direction: column;
 }
 
-.sidebar-header { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); }
+.sidebar-header { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); position: relative; }
 .sidebar-header h2 {
   font-size: 0.95rem;
   font-weight: 600;
@@ -155,6 +162,22 @@ a { color: inherit; }
 }
 
 .pharmacy-name { font-weight: 500; font-size: 0.85rem; }
+
+/* Both belong to the drawer, which only exists below 900px. Hidden here rather
+   than rendered conditionally, so there is one tree at every width. */
+.nav-toggle, .nav-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.nav-close { position: absolute; top: 12px; right: 12px; border-color: transparent; }
 
 .quick-search-btn {
   background: var(--surface-2);
@@ -294,7 +317,32 @@ select.input-field { cursor: pointer; }
 .settings-card, .queue-card { padding: 20px; }
 .queue-list { display: flex; flex-direction: column; gap: 12px; }
 
-.table-container { overflow: hidden; }
+/* `width: 100%` on both, and it is load-bearing.
+
+   These sit in flex columns whose cross size the card would not resolve
+   against: left to size itself, the card grew to 785px inside a 375px page, and
+   the table inside it — told to scroll — never had to, because it had all the
+   room it wanted. The columns past the fold were then clipped by the shell and
+   could not be reached at all, which is the worst of both: no scrollbar and no
+   data. Pinning the card to its container is what forces the table to be the
+   thing that scrolls. Measured, not guessed: 785px before, 327px after. */
+.table-container { overflow: hidden; width: 100%; min-width: 0; }
+
+/* The card a page's main table sits in. Was repeated as the same four inline
+   properties in six files; it is a class now so the responsive rule below has
+   something to attach to. */
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Two columns where there is room for two. Collapses below 900px — see the
+   responsive section. */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .data-table th, .data-table td { padding: 10px 14px; text-align: left; }
 .data-table th {
@@ -333,7 +381,13 @@ select.input-field { cursor: pointer; }
 /* ============================================================
    POS CHECKOUT
    ============================================================ */
-.pos-main { display: grid; grid-template-columns: 1fr 380px; height: 100%; overflow: hidden; }
+/* The anchor for the basket sheet below 900px. It has to be this element and
+   not the viewport: the page-transition wrapper carries a transform, and a
+   transformed ancestor becomes the containing block for anything `fixed`
+   inside it — the sheet came out six pixels low mid-transition and would sit
+   wherever that wrapper happened to leave it. Anchoring to the till is both
+   correct and immune to it. */
+.pos-main { position: relative; display: grid; grid-template-columns: 1fr 380px; height: 100%; overflow: hidden; }
 .catalog-section { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
 .search-bar { display: flex; gap: 10px; }
 .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
@@ -372,10 +426,20 @@ select.input-field { cursor: pointer; }
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 20px;
-  overflow-y: auto;
+  min-height: 0;
 }
+
+/* The basket scrolls on its own so the button that takes the money never
+   scrolls away with it. */
+.cart-scroll { flex: 1; overflow-y: auto; padding: 20px; min-height: 0; }
+.cart-footer { padding: 14px 20px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.cart-complete { width: 100%; min-height: 48px; font-size: 1rem; }
+
+/* The sheet handle and its scrim exist only below 900px. Hidden rather than
+   absent so the markup is the same at every width and there is no second tree
+   to keep in step. */
+.cart-handle { display: none; }
+.cart-scrim { display: none; }
 
 .cart-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
 .cart-table th, .cart-table td {
@@ -479,7 +543,7 @@ select.input-field { cursor: pointer; }
 .ai-chat-sidebar {
   position: fixed;
   top: 0; right: 0;
-  width: 380px; max-width: 100vw; height: 100vh;
+  width: 380px; max-width: 100vw; height: 100svh;
   background: var(--surface);
   border-left: 1px solid var(--border);
   display: flex; flex-direction: column;
@@ -670,7 +734,7 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
 /* ============================================================
    AUTH — split screen, shared by staff and ControlHub sign-in
    ============================================================ */
-.login-split { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
+.login-split { min-height: 100svh; display: grid; grid-template-columns: 1fr; }
 @media (min-width: 1024px) { .login-split { grid-template-columns: 1.05fr 1fr; } }
 
 .login-panel {
@@ -755,19 +819,19 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
 }
 .login-back:hover { color: var(--text); }
 
-.register-page { min-height: 100vh; }
+.register-page { min-height: 100svh; }
 .register-brand { display: flex; }
 .register-done { text-align: center; }
 .register-done-icon { color: var(--ok); margin: 0 auto 12px; display: block; }
 
 /* Legacy centred card, kept for any screen not yet converted. */
-.login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+.login-container { display: flex; align-items: center; justify-content: center; min-height: 100svh; background: var(--bg); }
 .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 32px; width: 100%; max-width: 380px; }
 
 /* ============================================================
    LANDING
    ============================================================ */
-.landing { min-height: 100vh; }
+.landing { min-height: 100svh; }
 
 .landing-nav {
   position: sticky; top: 0; z-index: 50;
@@ -845,6 +909,202 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
    Fewer and gentler, not zero. Opacity and colour still carry
    meaning; movement and scale are what get dropped.
    ============================================================ */
+/* ============================================================
+   SMALL SCREENS
+
+   A cashier at a counter is likelier to be on a phone or a cheap
+   tablet than at a desktop, and none of the layout above had been
+   looked at below about 900px.
+
+   Two breakpoints, matching where the layout actually breaks
+   rather than any device:
+
+     900px — the sidebar stops fitting beside the page, and the
+             till stops fitting beside its basket.
+     620px — a phone held in one hand: headers stack, padding
+             comes in, the search row goes to two lines.
+
+   Safe-area insets are used as a FLOOR (max(), never +). On any
+   device without them — every desktop, most Android — max()
+   resolves to the value that was already there and nothing moves.
+   Adding them instead would shift every layout to fix a handful.
+   ============================================================ */
+@media (max-width: 900px) {
+  /* --- The shell: sidebar becomes a drawer --- */
+  .nav-toggle { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1100;
+    width: min(280px, 84vw);
+    padding-left: env(safe-area-inset-left);
+    transform: translateX(-100%);
+    transition: transform var(--dur-panel) var(--ease-out);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+
+  .nav-close { display: inline-flex; }
+
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-panel) var(--ease-out);
+  }
+  .nav-scrim.is-open { opacity: 1; pointer-events: auto; }
+
+  .top-header { padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
+  /* The keyboard shortcut hint is for a keyboard. */
+  .quick-search-btn kbd { display: none; }
+  .pharmacy-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .page-content-inner { padding: 16px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+  .grid-2 { grid-template-columns: 1fr; }
+
+  /* Rows of buttons and filters are laid out inline across these pages as
+     `display: flex` with no wrap. That is fine at 1280px and pushes the page
+     sideways at 375px — a header's two buttons alone ran 92px past the edge.
+     An inline style cannot be overridden property by property, but flex-wrap
+     was never set inline, so this reaches them without touching fifteen files
+     and without guessing which rows matter. Wrapping is the right answer for
+     all of them: a button on the next line is readable, a button off the
+     screen is not. */
+  .page-content div[style*="display: flex"],
+  .page-content form[style*="display: flex"] { flex-wrap: wrap; }
+
+  /* A wide table scrolls inside its own card. The page body must never scroll
+     sideways: once it does, the heading and the header drift off with it and
+     the screen reads as broken rather than as wide. `display: block` turns the
+     table itself into the scroll box, which leaves the card's own title where
+     it is instead of dragging it along. */
+  .table-card > table,
+  .table-container > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* --- The till: one column, basket as a bottom sheet --- */
+  .pos-main { grid-template-columns: 1fr; }
+
+  .catalog-section {
+    padding: 14px max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+    /* Clear of the collapsed sheet, so the last row of products can still be
+       scrolled into view and tapped. */
+    padding-bottom: calc(132px + env(safe-area-inset-bottom));
+  }
+  .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+
+  .cart-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 890;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-panel) var(--ease-out);
+  }
+  .cart-scrim.is-open { opacity: 1; pointer-events: auto; }
+
+  .cart-section {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    border-left: none;
+    border-top: 1px solid var(--border-strong);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+    max-height: 100%;
+  }
+
+  /* Shut, the sheet is the handle and the button — the running total and the
+     way to take the money, both under a thumb. Everything else is one tap
+     away. The basket is hidden rather than squashed: a cart list at 40px tall
+     is not a cart list. */
+  .cart-section .cart-scroll { display: none; }
+  .cart-section.is-open .cart-scroll { display: block; padding: 14px 16px; }
+
+  .cart-handle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+  }
+  .cart-handle-label { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-weight: 500; }
+  .cart-handle-total { margin-left: auto; color: var(--ok); font-variant-numeric: tabular-nums; }
+
+  .cart-footer { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+
+  /* The assistant button would sit on top of the sheet's total. */
+  .floating-chat-btn { bottom: calc(140px + env(safe-area-inset-bottom)); right: max(16px, env(safe-area-inset-right)); }
+}
+
+@media (max-width: 620px) {
+  .page-content-inner { padding-top: 12px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .product-grid { grid-template-columns: 1fr 1fr; }
+  .modal-content { padding: 18px 16px max(18px, env(safe-area-inset-bottom)); }
+
+  /* The barcode form and the search box stop competing for one line. */
+  .pos-search-row { flex-direction: column; }
+  .pos-search-row .pos-search-input { width: 100% !important; }
+
+  /* At this width the pharmacy name is the useful half of the header. */
+  .quick-search-btn { display: none; }
+
+  /* Sonner sets its own mobile offsets but keeps a full-viewport width, so the
+     toast ran 16px past the right edge — the end of "Added Paracetamol 500mg"
+     was off the screen. With both insets fixed, `auto` resolves to the space
+     between them, which is what was intended. */
+  [data-sonner-toaster] { width: auto !important; max-width: calc(100vw - 32px); }
+}
+
+/* A 44px target is about the pad of a finger.
+
+   Asked two ways, because neither question alone is enough. `pointer: coarse`
+   catches a tablet at 1100px, which a width query would miss. `max-width: 900px`
+   catches a phone reporting a fine pointer — a stylus, a paired mouse, or a
+   browser that simply gets it wrong — which a pointer query would miss. The
+   comma is an OR: either is reason enough to size for a finger. */
+@media (pointer: coarse), (max-width: 900px) {
+  .qty-btn { width: 44px; height: 44px; }
+  .icon-btn { min-width: 44px; min-height: 44px; }
+  .btn { min-height: 44px; }
+  /* Includes the patient select on the till, which was 36px. */
+  .input-field, select.input-field { min-height: 44px; }
+  /* Padding alone left these at 42px, which is close enough to look right and
+     not close enough to be right. */
+  .nav-item { padding: 11px 12px; min-height: 44px; }
+  .pay-btn { min-height: 44px; }
+  .close-btn { min-width: 44px; min-height: 44px; }
+  .logout-btn { min-width: 40px; min-height: 40px; justify-content: center; align-items: center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -855,6 +1115,12 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
   .stat-card:hover, .product-card:hover, .product-card:active, .btn:active,
   .icon-btn:active, .qty-btn:active, .quick-chip:active, .floating-chat-btn:hover,
   .floating-chat-btn:active, .landing-card:hover { transform: none; }
+
+  /* The drawer's and the sheet's transforms are not decoration — they are what
+     puts the panel on screen — so they stay. What goes is the travel: the panel
+     is simply there, rather than sliding in. Reduced motion means less
+     movement, not less meaning. */
+  .sidebar, .nav-scrim, .cart-scrim { transition: none !important; }
 }
 
 /* ============================================================
@@ -898,6 +1164,23 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
 /* A till receipt is a short document. Held at A4 it would be one third content
    and two thirds blank paper, which reads as something having failed to load. */
 .doc-page--receipt { width: 148mm; padding: 14mm 12mm; }
+
+/* A phone screen is about 99mm wide. Two 12mm paper margins take a quarter of
+   that before a single character is set, so on screen the margins come in —
+   the paper ones are restored under @media print, which is where they mean
+   anything. The table inside scrolls rather than pushing the page wide. */
+@media (max-width: 620px) {
+  /* Three buttons totalling 388px on a 375px screen put Close off the right
+     edge, so the only way out of the receipt was the one you could not reach. */
+  .doc-toolbar { flex-wrap: wrap; padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  .doc-print-root { padding: 14px 8px; }
+  .doc-page, .doc-page--receipt { padding: 16px 14px; }
+  .doc-letterhead { flex-direction: column; gap: 8px; }
+  .doc-parties { flex-direction: column; gap: 10px; }
+  .doc-page table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .doc-sim-grid { grid-template-columns: 1fr; gap: 1px; }
+  .doc-sim-grid span:nth-child(odd) { margin-top: 5px; }
+}
 
 .doc-letterhead {
   display: flex;
