@@ -38,6 +38,49 @@ describe('Prescription lifecycle', () => {
     prescriptionId = res.body.data.prescription_id;
   });
 
+  // A pharmacist cannot verify what they cannot read. The review screen showed
+  // a blank medicine column and an invented reference because none of this was
+  // in the response (DEF-047).
+  it('carries enough on the list for a prescription to be reviewed', async () => {
+    const res = await request(app)
+      .get('/api/prescriptions')
+      .set('Authorization', `Bearer ${pharmacistToken}`);
+
+    expect(res.statusCode).toEqual(200);
+    const row = res.body.data.find((p) => p.prescription_id === prescriptionId);
+
+    expect(row.patient_name).toBeTruthy();
+    expect(row.doctor_name).toEqual('Dr. Martin Phiri');
+    expect(row.item_summary).toContain('Amoxicillin');
+    expect(row.item_count).toEqual(1);
+    expect(row.has_lapsed).toBe(false);
+  });
+
+  it('shows the prescriber, the directions and the stock position on review', async () => {
+    const res = await request(app)
+      .get(`/api/prescriptions/${prescriptionId}`)
+      .set('Authorization', `Bearer ${pharmacistToken}`);
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.data.doctor_name).toEqual('Dr. Martin Phiri');
+    expect(res.body.data.patient_nrc).toBeDefined();
+
+    const item = res.body.data.items[0];
+    expect(item.product_name).toContain('Amoxicillin');
+    expect(item.dosage_instructions).toEqual('One capsule twice daily');
+    // Whether it can actually be dispensed, not only what was asked for.
+    expect(Number(item.in_date_stock)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('filters the list by status, so a tab means something', async () => {
+    const res = await request(app)
+      .get('/api/prescriptions?status=PENDING')
+      .set('Authorization', `Bearer ${pharmacistToken}`);
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.data.every((p) => p.status === 'PENDING')).toBe(true);
+  });
+
   it('returns the prescription with its items', async () => {
     const res = await request(app)
       .get(`/api/prescriptions/${prescriptionId}`)
