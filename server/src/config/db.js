@@ -70,6 +70,18 @@ const initDb = async () => {
   }
 };
 
+// Several controllers used to answer with invented data when PostgreSQL was
+// unreachable — a queue of fabricated patients, a prescription that was never
+// written. That was meant as demo resilience and it is the most dangerous kind
+// of bug: an outage presents as working software, which is precisely what a
+// health check exists to prevent. The fallbacks are gone. A controller that
+// cannot reach the database says so.
+const unavailable = (res) =>
+  res.status(503).json({
+    error: 'DATABASE_UNAVAILABLE',
+    message: 'The database is not reachable, so this request cannot be answered.'
+  });
+
 module.exports = {
   pool,
   query: (text, params) => {
@@ -80,4 +92,5 @@ module.exports = {
   },
   initDb,
   isDbAvailable: () => dbAvailable,
+  unavailable,
 };

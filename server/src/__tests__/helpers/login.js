@@ -15,7 +15,11 @@ const SEED = {
   paracetamolBatch: '66666666-6666-6666-6666-666666666601',
   expiredCoughBatch: '66666666-6666-6666-6666-666666666604',
   patientChipego: '33333333-3333-3333-3333-333333333301',
+  riversidePatient: '33333333-3333-3333-3333-333333333901',
+  // Dr. Phiri holds an account here and can be handed a queue; Dr. Banda is a
+  // referring paediatrician with no login.
   doctorPhiri: '44444444-4444-4444-4444-444444444401',
+  doctorBanda: '44444444-4444-4444-4444-444444444402',
   password: 'password123'
 };
 
