@@ -49,12 +49,19 @@ shell, because only the browser can resolve a client-side route.
 
 ## 3. Deploying to Railway
 
+This section describes the GitHub-connected route. **The deployment that actually
+exists did not use it** — see §7, which used the CLI and avoided the problem
+below entirely.
+
 ### 3.1 If the repository does not appear in the list
 
 Railway only lists repositories its GitHub App has been granted access to. This
 repository lives under the **md1134** account, so it will not appear for a
 different GitHub user until either the owner installs the Railway GitHub App on
 it and grants access, or the repository is forked.
+
+The CLI sidesteps this: `railway up` uploads the working directory and never
+consults GitHub. The trade-off is that there is no automatic redeploy on push.
 
 ### 3.2 Steps
 
@@ -122,15 +129,66 @@ Stated rather than discovered later.
    and runs the server suite; the client's `lint` script is `vite build`, not
    ESLint, and there are no component or end-to-end tests. DEF-038 and DEF-043
    are what that gap has already cost.
-3. **CI runs PostgreSQL 15; development runs 18.** Nothing in the schema depends
-   on the difference, but the versions are not the same and no deployment has
-   been tested against either in a hosted environment.
+3. **CI runs PostgreSQL 15; development and the deployment run 18.** Nothing in
+   the schema depends on the difference, but the pipeline is not testing against
+   the version actually deployed.
 4. **Tenant isolation is still enforced by convention, not by the database.**
    Row-level security is unimplemented; see R-02 and R-10 in
    `../Elaboration/RiskList.md`, which also records why it was deferred and the
    superuser trap waiting for whoever implements it.
-5. **This has not been deployed.** The single-service path was verified locally:
-   the client was built, the server started with `NODE_ENV=production`, and the
-   app shell, a client-side route, the health endpoint and an unknown API path
-   were each confirmed to answer correctly. No Railway deployment has been
-   performed, so nothing here is claimed as proven in a hosted environment.
+5. **The live deployment carries demonstration credentials.** `SEED_DEMO_DATA` is
+   set to `true` on the deployment described in §7, because a demonstration with
+   an empty database and no accounts is not a demonstration. The consequence is
+   that the accounts in the user manual — including `admin` — are reachable from
+   the public internet on a published password. That is acceptable for a graded
+   demonstration and unacceptable for anything else. After marking, either delete
+   the service or remove the public domain.
+
+---
+
+## 7. The deployment that exists
+
+Deployed 4 August 2026 with the Railway CLI, from the working directory rather
+than from a GitHub connection. `railway up` uploads the current folder, so the
+repository-access problem in §3.1 never arises — nothing needed to be forked and
+no GitHub App had to be installed.
+
+| | |
+| :--- | :--- |
+| URL | https://pharmacy-pos-production-73c2.up.railway.app |
+| Project | `group-16-pharmacy-pos` |
+| Services | `pharmacy-pos` (the app), `Postgres` (PostgreSQL 18) |
+| Region | `sfo` |
+
+### What was verified against the live deployment
+
+Checked by request rather than assumed:
+
+| Check | Result |
+| :--- | :--- |
+| `GET /api/health` | `200`, `"database":"connected"` |
+| `GET /` | `200 text/html` — the built client is served by the server |
+| `GET /api/tenants/directory` | Returns Central Care Pharmacy and Riverside Chemist, so the schema and seed applied |
+| `POST /api/auth/login` | `pharmacist` signs in and is issued a token |
+
+Two things worth recording because they were open questions beforehand:
+
+1. **The Postgres image is `postgres-ssl`, and `config/db.js` builds its Pool with
+   no SSL option.** This works because `DB_HOST` resolves to
+   `postgres.railway.internal` — traffic stays on Railway's private network and
+   is not required to negotiate TLS. Pointing `DB_HOST` at a public proxy host
+   instead would fail, and would need an `ssl` option adding to the Pool.
+2. **`JWT_SECRET` is set to a generated 96-character value**, not the fallback in
+   `middleware/auth.js`. That fallback is committed to this repository; a
+   deployment relying on it could have its tokens forged by anyone who has read
+   the source.
+
+### Redeploying
+
+```bash
+railway up --service pharmacy-pos
+```
+
+There is no automatic redeploy on push, because the service is not connected to a
+GitHub repository. Pushing to any remote does nothing to the deployment until
+this command is run again.
