@@ -8,6 +8,9 @@ HANDOFF.md
 NEXT-SESSION-PROMPT.md
 .env
 .env.*
+# The template carries no secrets and has to be committed, or nobody cloning
+# this knows what to set. Every real .env stays ignored by the rules above.
+!.env.example
 *.log
 desktop.ini
 ~$*
