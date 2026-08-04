@@ -103,7 +103,7 @@ exports.decide = async (req, res) => {
       return res.status(400).json({ error: 'Decision must be APPROVED or REJECTED' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

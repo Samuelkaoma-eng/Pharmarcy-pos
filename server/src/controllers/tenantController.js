@@ -8,8 +8,13 @@ exports.getDirectory = async (req, res) => {
   try {
     if (!db.isDbAvailable()) return db.unavailable(res);
 
-    const result = await db.query(
-      "SELECT tenant_id, name FROM tenants WHERE status = 'ACTIVE' AND license_number <> 'PLATFORM-000' ORDER BY name ASC"
+    // The sign-in page needs the list of pharmacies before anybody has signed
+    // in, so this read has no tenant to be scoped to. It returns two columns —
+    // the name and the id you would then sign in against — and nothing else.
+    const result = await db.withAuthLookup(() =>
+      db.query(
+        "SELECT tenant_id, name FROM tenants WHERE status = 'ACTIVE' AND license_number <> 'PLATFORM-000' ORDER BY name ASC"
+      )
     );
     res.json({ message: 'Pharmacy directory retrieved', data: result.rows });
   } catch (error) {

@@ -32,6 +32,7 @@ const tillController = require('./controllers/tillController');
 const reportController = require('./controllers/reportController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
+const { dbContext } = require('./middleware/dbContext');
 
 const app = express();
 
@@ -91,6 +92,12 @@ const generalLimiter = rateLimit({
 });
 
 app.use('/api', generalLimiter);
+
+// Every API request gets its own database connection, carrying its own tenant,
+// released when the response closes. This has to be mounted before any route
+// that reads or writes: a request without it has no scope, and a query without
+// a scope sees nothing.
+app.use('/api', dbContext);
 
 // Init DB Schema & Seed
 initDb();

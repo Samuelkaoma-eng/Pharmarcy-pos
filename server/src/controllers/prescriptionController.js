@@ -13,7 +13,7 @@ exports.createPrescription = async (req, res) => {
       return res.status(400).json({ error: 'A prescription must list at least one medicine' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

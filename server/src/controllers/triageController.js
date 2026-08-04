@@ -148,7 +148,7 @@ exports.createVisit = async (req, res) => {
       return res.status(404).json({ error: 'Patient not found for this pharmacy' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 
@@ -281,7 +281,7 @@ exports.recordVitals = async (req, res) => {
 
     if (!db.isDbAvailable()) return db.unavailable(res);
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

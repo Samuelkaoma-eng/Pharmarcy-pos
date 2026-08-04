@@ -136,7 +136,7 @@ exports.close = async (req, res) => {
       return res.status(400).json({ error: 'A counted closing cash amount of zero or more is required' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

@@ -49,8 +49,14 @@ const appendToFamily = async (executor, { userId, tenantId, familyId, ip, userAg
 
 // Opens a new chain. Called on a fresh sign-in, so each device gets its own
 // family and signing one out does not sign the others out.
+//
+// A sign-in has no session yet, so the connection carries no tenant and the
+// row-level security check on refresh_tokens would refuse this insert. It runs
+// inside the declared auth window, which covers the identity tables only.
 const issue = async ({ userId, tenantId, ip, userAgent }) =>
-  appendToFamily(db, { userId, tenantId, familyId: crypto.randomUUID(), ip, userAgent });
+  db.withAuthLookup(() =>
+    appendToFamily(db, { userId, tenantId, familyId: crypto.randomUUID(), ip, userAgent })
+  );
 
 const revokeFamily = async (executor, familyId) => {
   await executor.query(
@@ -77,8 +83,15 @@ const revokeAllForUser = async (userId) => {
  */
 const rotate = async ({ raw, ip, userAgent }) => {
   if (!raw) throw rejected();
+  // A refresh arrives with a cookie and no access token, so the connection has
+  // no tenant on it: the token is found by its hash, and the hash is what
+  // establishes whose session this is. Declared as an auth lookup for that
+  // reason, and closed again the moment the rotation finishes.
+  return db.withAuthLookup(() => rotateWithin({ raw, ip, userAgent }));
+};
 
-  const client = await db.pool.connect();
+const rotateWithin = async ({ raw, ip, userAgent }) => {
+  const client = await db.connect();
   try {
     await client.query('BEGIN');
 
@@ -168,13 +181,14 @@ const rotate = async ({ raw, ip, userAgent }) => {
 // the session rather than fail.
 const familyForToken = async (raw) => {
   if (!raw) return null;
-  const res = await db.query('SELECT family_id FROM refresh_tokens WHERE token_hash = $1', [
-    hashToken(raw)
-  ]);
+  // Signing out also arrives with only a cookie.
+  const res = await db.withAuthLookup(() =>
+    db.query('SELECT family_id FROM refresh_tokens WHERE token_hash = $1', [hashToken(raw)])
+  );
   return res.rows[0]?.family_id || null;
 };
 
-const revokeFamilyById = (familyId) => revokeFamily(db, familyId);
+const revokeFamilyById = (familyId) => db.withAuthLookup(() => revokeFamily(db, familyId));
 
 module.exports = {
   issue,

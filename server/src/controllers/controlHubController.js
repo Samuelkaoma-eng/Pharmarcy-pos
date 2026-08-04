@@ -100,33 +100,42 @@ exports.registerTenant = async (req, res) => {
     // the administrator an approved pharmacy would have nobody able to sign
     // in. The owner chooses the password here, so no secret is generated or
     // returned in the response.
-    const client = await db.pool.connect();
-    try {
-      await client.query('BEGIN');
+    //
+    // This runs before the pharmacy exists, so there is no tenant to scope the
+    // connection to and row-level security would refuse both inserts. It is
+    // declared as an auth lookup, which reaches tenants and users and no other
+    // table — a registration cannot touch a patient record or anybody's stock.
+    const tenant = await db.withAuthLookup(async () => {
+      const client = await db.connect();
+      try {
+        await client.query('BEGIN');
 
-      const tenantRes = await client.query(
-        'INSERT INTO tenants (name, owner_email, phone, status) VALUES ($1, $2, $3, $4) RETURNING *',
-        [name, owner_email, phone, 'REGISTERED']
-      );
-      const tenant = tenantRes.rows[0];
+        const tenantRes = await client.query(
+          'INSERT INTO tenants (name, owner_email, phone, status) VALUES ($1, $2, $3, $4) RETURNING *',
+          [name, owner_email, phone, 'REGISTERED']
+        );
+        const created = tenantRes.rows[0];
 
-      const passwordHash = await bcrypt.hash(admin_password, 10);
-      await client.query(
-        'INSERT INTO users (tenant_id, username, password_hash, full_name, role) VALUES ($1, $2, $3, $4, $5)',
-        [tenant.tenant_id, admin_username, passwordHash, `${name} Administrator`, 'Admin']
-      );
+        const passwordHash = await bcrypt.hash(admin_password, 10);
+        await client.query(
+          'INSERT INTO users (tenant_id, username, password_hash, full_name, role) VALUES ($1, $2, $3, $4, $5)',
+          [created.tenant_id, admin_username, passwordHash, `${name} Administrator`, 'Admin']
+        );
 
-      await client.query('COMMIT');
-      return res.status(201).json({
-        message: 'Pharmacy registered and awaiting review',
-        data: { ...tenant, admin_username }
-      });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+        await client.query('COMMIT');
+        return created;
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    });
+
+    return res.status(201).json({
+      message: 'Pharmacy registered and awaiting review',
+      data: { ...tenant, admin_username }
+    });
   } catch (error) {
     console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });

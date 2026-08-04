@@ -122,7 +122,7 @@ exports.createPurchaseOrder = async (req, res) => {
       return res.status(400).json({ error: 'A purchase order must contain at least one line' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 
@@ -186,7 +186,7 @@ exports.receiveAgainstOrder = async (req, res) => {
       return res.status(400).json({ error: 'Nothing to receive' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 
