@@ -8,6 +8,12 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'pharmacy_pos',
   password: process.env.DB_PASSWORD || 'password',
   port: parseInt(process.env.DB_PORT || '5432', 10),
+  // Off by default, which is correct for a local database and for the deployed
+  // one: it reaches PostgreSQL over a private network where TLS is not
+  // required. Set DB_SSL=true if the host is ever moved to a public endpoint —
+  // without it the database password and patient records would cross the
+  // network in clear text.
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('error', (err) => {

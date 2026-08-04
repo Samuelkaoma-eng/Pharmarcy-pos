@@ -129,9 +129,9 @@ Stated rather than discovered later.
    and runs the server suite; the client's `lint` script is `vite build`, not
    ESLint, and there are no component or end-to-end tests. DEF-038 and DEF-043
    are what that gap has already cost.
-3. **CI runs PostgreSQL 15; development and the deployment run 18.** Nothing in
-   the schema depends on the difference, but the pipeline is not testing against
-   the version actually deployed.
+3. **CI, development and the deployment now all run PostgreSQL 18.** The pipeline
+   previously stood up 15 while the deployment ran 18, so it was not testing
+   against the version actually in use. That is closed.
 4. **Tenant isolation is still enforced by convention, not by the database.**
    Row-level security is unimplemented; see R-02 and R-10 in
    `../Elaboration/RiskList.md`, which also records why it was deferred and the

@@ -21,7 +21,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -75,7 +75,6 @@ jobs:
           DB_PASSWORD: password
           DB_NAME: pharmacy_pos
           JWT_SECRET: ci_test_jwt_secret_key_123
-          REFRESH_SECRET: ci_test_refresh_secret_key_456
 
   # ---------------------------------------------------------------------------
   # Dependency vulnerabilities.

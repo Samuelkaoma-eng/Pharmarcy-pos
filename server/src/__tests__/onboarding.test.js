@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../app');
 const { pool } = require('../config/db');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
+const { REQUIRED_TYPES } = require('../services/onboardingReadiness');
 
 describe('Tenant onboarding and ControlHub review', () => {
   let superAdminToken;
@@ -93,7 +94,51 @@ describe('Tenant onboarding and ControlHub review', () => {
     expect(ids).toContain(registeredTenantId);
   });
 
-  it('lets the SuperAdmin activate the tenant', async () => {
+  // A pharmacy that has filed nothing must not be able to trade. Readiness used
+  // to be reported to the operator and enforced nowhere, so this activation
+  // succeeded against an empty document set (DEF-055).
+  it('refuses to activate a pharmacy that has filed no paperwork', async () => {
+    const res = await request(app)
+      .put(`/api/controlhub/tenants/${registeredTenantId}/status`)
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({ status: 'ACTIVE' });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.error).toMatch(/required documents are not verified/i);
+
+    const after = await pool.query('SELECT status FROM tenants WHERE tenant_id = $1', [
+      registeredTenantId
+    ]);
+    expect(after.rows[0].status).not.toEqual('ACTIVE');
+  });
+
+  it('still refuses while a single document is left unverified', async () => {
+    // Six of seven verified is not six-sevenths admitted. It is refused.
+    const types = REQUIRED_TYPES.slice(0, REQUIRED_TYPES.length - 1);
+    for (const t of types) {
+      await pool.query(
+        `INSERT INTO onboarding_documents (tenant_id, document_type, file_name, status)
+         VALUES ($1, $2, $3, 'VERIFIED')`,
+        [registeredTenantId, t, `${t.toLowerCase()}.pdf`]
+      );
+    }
+
+    const res = await request(app)
+      .put(`/api/controlhub/tenants/${registeredTenantId}/status`)
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({ status: 'ACTIVE' });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.error).toMatch(/ZAMRA_INSPECTION/);
+  });
+
+  it('lets the SuperAdmin activate the tenant once every document is verified', async () => {
+    await pool.query(
+      `INSERT INTO onboarding_documents (tenant_id, document_type, file_name, status)
+       VALUES ($1, 'ZAMRA_INSPECTION', 'zamra_inspection.pdf', 'VERIFIED')`,
+      [registeredTenantId]
+    );
+
     const res = await request(app)
       .put(`/api/controlhub/tenants/${registeredTenantId}/status`)
       .set('Authorization', `Bearer ${superAdminToken}`)
