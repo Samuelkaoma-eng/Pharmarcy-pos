@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const audit = require('../services/auditLog');
 
 // How a product is taxed. Medicines are zero-rated under Group 6 of the Zambian
 // VAT (Zero-Rating) Order, which is why that is the default; sundries sold
@@ -130,6 +131,16 @@ exports.updateProduct = async (req, res) => {
       return res.status(400).json({ error: `State must be one of: ${PRODUCT_STATES.join(', ')}` });
     }
 
+    // Read before writing, so the audit entry can say what the value was. A
+    // log recording only the new price answers nothing.
+    const existing = await db.query(
+      'SELECT * FROM products WHERE product_id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
     // Every field coalesces to what is already stored. Assigning unconditionally
     // meant a request sending only a price tried to write null over the name,
     // and an omitted state silently reinstated a discontinued line.
@@ -159,7 +170,42 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    return res.json({ success: true, message: 'Product updated', data: result.rows[0] });
+    const updated = result.rows[0];
+
+    // A price change and a change of VAT treatment are the two edits with
+    // money attached, so they are recorded under their own verbs rather than
+    // buried in a general update.
+    await audit.recordChange(db, req, {
+      action: audit.ACTIONS.PRICE_CHANGED,
+      entityType: 'product',
+      entityId: updated.product_id,
+      entityLabel: updated.name,
+      fields: ['selling_price', 'cost_price'],
+      before: existing.rows[0],
+      after: updated
+    });
+
+    await audit.recordChange(db, req, {
+      action: audit.ACTIONS.VAT_TREATMENT_CHANGED,
+      entityType: 'product',
+      entityId: updated.product_id,
+      entityLabel: updated.name,
+      fields: ['vat_treatment'],
+      before: existing.rows[0],
+      after: updated
+    });
+
+    await audit.recordChange(db, req, {
+      action: audit.ACTIONS.PRODUCT_UPDATED,
+      entityType: 'product',
+      entityId: updated.product_id,
+      entityLabel: updated.name,
+      fields: ['name', 'state', 'requires_prescription', 'reorder_level', 'barcode', 'category'],
+      before: existing.rows[0],
+      after: updated
+    });
+
+    return res.json({ success: true, message: 'Product updated', data: updated });
   } catch (error) {
     console.error('Update product error:', error);
     res.status(500).json({ error: 'Server error' });

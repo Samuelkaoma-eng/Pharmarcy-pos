@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS product_batches CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS tenants CASCADE;
@@ -101,6 +102,46 @@ CREATE TABLE refresh_tokens (
     -- Recorded so a suspicious chain can be recognised after the fact.
     ip VARCHAR(64),
     user_agent TEXT
+);
+
+-- 2b. AUDIT LOG
+-- Who changed what, when, and from where.
+--
+-- The system could already account for stock through stock_movements and for
+-- platform changes through approval_requests, but there was nothing covering
+-- the rest: a price could be edited, a prescription verified, an account given
+-- a new role or a drawer counted short, and the only trace was the new value
+-- sitting in its column with no record of what it had been or who changed it.
+--
+-- Three properties make an entry worth keeping. The before and after values
+-- are stored together, because "the price is now 12.00" answers nothing on its
+-- own. The actor is the account that made the change rather than the row it
+-- touched. And an entry is written inside the same transaction as the change
+-- it describes, so a rolled-back change leaves no audit entry claiming it
+-- happened.
+CREATE TABLE audit_log (
+    audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    -- The account responsible. Null only for an action taken before sign-in.
+    actor_id UUID REFERENCES users(user_id),
+    actor_username VARCHAR(50),
+    actor_role VARCHAR(20),
+    -- What was done, as a stable verb: PRICE_CHANGED, PRESCRIPTION_VERIFIED,
+    -- STOCK_ADJUSTED, ROLE_CHANGED, TILL_CLOSED, USER_DEACTIVATED.
+    action VARCHAR(50) NOT NULL,
+    -- What it was done to.
+    entity_type VARCHAR(40) NOT NULL,
+    entity_id UUID,
+    entity_label TEXT,
+    -- The change itself. Held as JSON so one table serves every action without
+    -- a column per field, and so a value that was null before is recorded as
+    -- having been null rather than as absent.
+    before_value JSONB,
+    after_value JSONB,
+    -- Why, where a reason was required of the person making the change.
+    reason TEXT,
+    ip VARCHAR(64),
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 3. CUSTOMERS (Patients)
@@ -540,5 +581,10 @@ CREATE INDEX idx_sales_tenant ON sales(tenant_id);
 CREATE INDEX idx_sales_receipt ON sales(receipt_number);
 CREATE INDEX idx_sales_till_session ON sales(till_session_id);
 CREATE INDEX idx_refresh_family ON refresh_tokens(family_id);
+-- An audit trail is read by asking "what happened here" and "what did this
+-- person do", so both are indexed.
+CREATE INDEX idx_audit_tenant_time ON audit_log(tenant_id, occurred_at DESC);
+CREATE INDEX idx_audit_entity ON audit_log(entity_type, entity_id);
+CREATE INDEX idx_audit_actor ON audit_log(actor_id, occurred_at DESC);
 CREATE INDEX idx_refresh_user ON refresh_tokens(user_id) WHERE revoked_at IS NULL;
 CREATE INDEX idx_till_sessions_tenant ON till_sessions(tenant_id, status, opened_at DESC);

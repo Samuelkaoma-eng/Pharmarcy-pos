@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const audit = require('../services/auditLog');
 
 // A shift at a till: the float that went in, the takings the system recorded,
 // the cash actually counted at the end, and the difference between the last two.
@@ -183,6 +184,23 @@ exports.close = async (req, res) => {
          RETURNING *`,
         [userId, counted, expectedCash, variance, closing_notes || null, session.till_session_id]
       );
+
+      // Written with the transaction client, so a close that rolls back leaves
+      // no entry claiming a drawer was counted.
+      await audit.record(client, req, {
+        action: audit.ACTIONS.TILL_CLOSED,
+        entityType: 'till_session',
+        entityId: session.till_session_id,
+        entityLabel: `Shift opened ${new Date(session.opened_at).toISOString()}`,
+        before: { status: 'OPEN', opening_float: openingFloat },
+        after: {
+          status: 'CLOSED',
+          expected_cash: expectedCash,
+          closing_count: counted,
+          variance
+        },
+        reason: closing_notes || null
+      });
 
       await client.query('COMMIT');
 

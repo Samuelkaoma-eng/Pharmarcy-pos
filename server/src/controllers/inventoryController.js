@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const audit = require('../services/auditLog');
 
 exports.receiveStock = async (req, res) => {
   try {
@@ -186,6 +187,18 @@ exports.adjustStock = async (req, res) => {
          VALUES ($1, $2, $3, $4, 'ADJUSTMENT', $5, $6)`,
         [tenantId, productId, batchId || null, quantityDifference, userId, notes]
       );
+
+      // Recorded with the transaction client and carrying the reason the
+      // controller already insists on, so the trail says why as well as what.
+      await audit.record(client, req, {
+        action: audit.ACTIONS.STOCK_ADJUSTED,
+        entityType: 'product',
+        entityId: productId,
+        entityLabel: batchId ? `Batch ${batchId}` : 'Untracked stock',
+        before: null,
+        after: { quantity_difference: quantityDifference, batch_id: batchId || null },
+        reason: notes
+      });
 
       await client.query('COMMIT');
       return res.json({ message: 'Stock adjusted successfully' });

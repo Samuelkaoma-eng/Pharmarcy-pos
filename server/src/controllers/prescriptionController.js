@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const audit = require('../services/auditLog');
 
 exports.createPrescription = async (req, res) => {
   try {
@@ -161,6 +162,18 @@ exports.verifyPrescription = async (req, res) => {
     // No matching row means the prescription is missing or owned by another
     // pharmacy. Reporting success there would fake a verification.
     if (result.rows.length === 0) return res.status(404).json({ error: 'Prescription not found' });
+
+    // Verification is the pharmacist's professional judgement and the thing
+    // that unlocks a controlled sale, so it is the single most important act
+    // on this system to be able to attribute afterwards.
+    await audit.record(db, req, {
+      action: audit.ACTIONS.PRESCRIPTION_VERIFIED,
+      entityType: 'prescription',
+      entityId: id,
+      entityLabel: `Prescription ${String(id).slice(0, 8).toUpperCase()}`,
+      before: { status: 'PENDING' },
+      after: { status: 'VERIFIED' }
+    });
 
     res.json({ message: 'Prescription verified', data: result.rows[0] });
   } catch (error) {

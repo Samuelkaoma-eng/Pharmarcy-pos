@@ -357,4 +357,64 @@ exports.dispensingRegister = async (req, res) => {
   }
 };
 
+/**
+ * The audit trail. A log nobody can read is not a control, so it is exposed
+ * here alongside the other things an owner or regulator would ask for.
+ *
+ * Filterable by action, by the entity touched and by who did it, because those
+ * are the three questions actually asked of an audit log: what happened to
+ * this product, what did this member of staff do, and show me every price
+ * change.
+ */
+exports.auditTrail = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { from, to } = resolveRange(req.query);
+    const { action, entityId, actorId } = req.query;
+
+    if (!db.isDbAvailable()) return db.unavailable(res);
+
+    const params = [tenantId, from, to];
+    let where = 'a.tenant_id = $1 AND a.occurred_at::date BETWEEN $2 AND $3';
+
+    if (action) {
+      params.push(action);
+      where += ` AND a.action = $${params.length}`;
+    }
+    if (entityId) {
+      params.push(entityId);
+      where += ` AND a.entity_id = $${params.length}`;
+    }
+    if (actorId) {
+      params.push(actorId);
+      where += ` AND a.actor_id = $${params.length}`;
+    }
+
+    const result = await db.query(
+      `SELECT a.audit_id, a.occurred_at, a.action, a.entity_type, a.entity_id,
+              a.entity_label, a.before_value, a.after_value, a.reason, a.ip,
+              a.actor_username, a.actor_role,
+              u.full_name AS actor_name
+       FROM audit_log a
+       LEFT JOIN users u ON u.user_id = a.actor_id
+       WHERE ${where}
+       ORDER BY a.occurred_at DESC
+       LIMIT 500`,
+      params
+    );
+
+    res.json({
+      message: 'Audit trail retrieved',
+      data: {
+        period: { from, to },
+        entry_count: result.rows.length,
+        entries: result.rows
+      }
+    });
+  } catch (error) {
+    console.error('Report controller error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 module.exports.NOT_A_RETURN = NOT_A_RETURN;

@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
+const audit = require('../services/auditLog');
 
 // Roles a pharmacy administrator may hand out. SuperAdmin is deliberately not
 // in this list: platform authority is never granted from inside a tenant.
@@ -74,6 +75,12 @@ exports.updateUser = async (req, res) => {
       return res.status(400).json({ error: 'You cannot change your own role or deactivate yourself' });
     }
 
+    const existing = await db.query(
+      `SELECT ${PUBLIC_COLUMNS} FROM users WHERE user_id = $1 AND tenant_id = $2`,
+      [id, tenantId]
+    );
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Staff member not found' });
+
     const result = await db.query(
       `UPDATE users SET
          full_name = COALESCE($1, full_name),
@@ -86,7 +93,34 @@ exports.updateUser = async (req, res) => {
     );
 
     if (result.rows.length === 0) return res.status(404).json({ error: 'Staff member not found' });
-    res.json({ success: true, message: 'Staff account updated', data: result.rows[0] });
+
+    const updated = result.rows[0];
+    const was = existing.rows[0];
+
+    // Who can do what, and who is allowed in at all. Both are worth being able
+    // to reconstruct after the fact.
+    await audit.recordChange(db, req, {
+      action: audit.ACTIONS.ROLE_CHANGED,
+      entityType: 'user',
+      entityId: updated.user_id,
+      entityLabel: updated.username,
+      fields: ['role'],
+      before: was,
+      after: updated
+    });
+
+    if (String(was.is_active) !== String(updated.is_active)) {
+      await audit.record(db, req, {
+        action: updated.is_active ? audit.ACTIONS.USER_REACTIVATED : audit.ACTIONS.USER_DEACTIVATED,
+        entityType: 'user',
+        entityId: updated.user_id,
+        entityLabel: updated.username,
+        before: { is_active: was.is_active },
+        after: { is_active: updated.is_active }
+      });
+    }
+
+    res.json({ success: true, message: 'Staff account updated', data: updated });
   } catch (error) {
     console.error('User controller error:', error.message);
     res.status(500).json({ error: 'Server error' });

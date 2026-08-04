@@ -266,6 +266,9 @@ apiRouter.get('/reports/vat', requireRole('Admin', 'Pharmacist'), reportControll
 apiRouter.get('/reports/trading', requireRole('Admin', 'Pharmacist'), reportController.tradingSummary);
 apiRouter.get('/reports/stock', requireRole('Admin', 'Pharmacist'), reportController.stockValuation);
 apiRouter.get('/reports/dispensing', requireRole('Admin', 'Pharmacist'), reportController.dispensingRegister);
+// The audit trail. Admin only: it names who did what, which is not something
+// one member of staff should be able to read about another.
+apiRouter.get('/reports/audit', requireRole('Admin'), reportController.auditTrail);
 
 // Receipts
 apiRouter.get('/receipts/:receiptNumber/html', receiptController.getReceiptHtml);
