@@ -190,14 +190,22 @@ apiRouter.get('/patients/:id', patientController.getPatient);
 apiRouter.post('/patients', patientController.createPatient);
 apiRouter.put('/patients/:id', patientController.updatePatient);
 
-// Triage / Visits
+// Triage / Visits.
+// Each station is gated to the people who staff it. Previously every one of
+// these was open to any signed-in user, so a cashier could assign a doctor.
+apiRouter.get('/doctors', triageController.getDoctors);
 apiRouter.get('/visits/queue', triageController.getQueue);
 apiRouter.get('/visits/stats', triageController.getStats);
+// Reception registers arrivals.
 apiRouter.post('/visits', triageController.createVisit);
 apiRouter.get('/visits/:id', triageController.getVisit);
-apiRouter.patch('/visits/:id/status', triageController.updateStatus);
-apiRouter.patch('/visits/:id/assign', triageController.assignDoctor);
-apiRouter.post('/visits/:id/vitals', triageController.recordVitals);
+apiRouter.patch('/visits/:id/status', requireRole('Admin', 'Pharmacist', 'Doctor'), triageController.updateStatus);
+// Routing a patient to a clinician is a front-desk action.
+apiRouter.patch('/visits/:id/assign', requireRole('Admin', 'Pharmacist'), triageController.assignDoctor);
+// Taking vitals is clinical, and it is what moves a visit into TRIAGE.
+apiRouter.post('/visits/:id/vitals', requireRole('Admin', 'Pharmacist', 'Doctor'), triageController.recordVitals);
+// Writing up the consultation and handing the patient to the counter.
+apiRouter.patch('/visits/:id/assessment', requireRole('Admin', 'Pharmacist', 'Doctor'), triageController.recordAssessment);
 
 // Prescriptions
 apiRouter.get('/prescriptions', prescriptionController.getPrescriptions);
