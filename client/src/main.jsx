@@ -18,6 +18,8 @@ import Prescriptions from './pages/Prescriptions';
 import SalesHistory from './pages/SalesHistory';
 import AgentChat from './pages/AgentChat';
 import Settings from './pages/Settings';
+import Procurement from './pages/Procurement';
+import Insurance from './pages/Insurance';
 import Staff from './pages/Staff';
 
 import CHLogin from './pages/controlhub/CHLogin';
@@ -62,6 +64,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/sales" element={<SalesHistory />} />
             <Route path="/agent" element={<AgentChat />} />
+            <Route path="/procurement" element={<Procurement />} />
+            <Route path="/insurance" element={<Insurance />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

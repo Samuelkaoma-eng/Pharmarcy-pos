@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, ShoppingCart, Package, Users, UsersRound, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, UsersRound, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search, Truck, HeartHandshake } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Toaster } from 'sonner';
 import AIChatSidebar from '../components/AIChatSidebar';
@@ -22,6 +22,8 @@ export default function AppLayout() {
     { path: '/triage', icon: Activity, label: 'Triage Queue' },
     { path: '/prescriptions', icon: FileText, label: 'Prescriptions' },
     { path: '/sales', icon: History, label: 'Sales History' },
+    { path: '/procurement', icon: Truck, label: 'Procurement' },
+    { path: '/insurance', icon: HeartHandshake, label: 'Insurance' },
     { path: '/agent', icon: Bot, label: 'Assistant' },
     { path: '/staff', icon: UsersRound, label: 'Staff & Roles' },
     { path: '/settings', icon: Settings, label: 'Site Settings' },

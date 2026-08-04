@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { Check, X, FileText, ShieldCheck, Clock, ChevronDown, Eye } from 'lucide-react';
-import { get, put, patch, openAuthedFile } from '../../api/client';
+import { Check, X, FileText, ShieldCheck, Clock, ChevronDown, Eye, Upload } from 'lucide-react';
+import { get, put, patch, upload, openAuthedFile } from '../../api/client';
 
 const EASE = [0.23, 1, 0.32, 1];
 
@@ -75,6 +75,9 @@ function ApplicationCard({ app, onActivated }) {
   const [documents, setDocuments] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [docTypes, setDocTypes] = useState([]);
+  const [uploadType, setUploadType] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const loadReview = useCallback(async () => {
     const [docsRes, readyRes] = await Promise.all([
@@ -84,6 +87,12 @@ function ApplicationCard({ app, onActivated }) {
     if (docsRes?.data) setDocuments(docsRes.data);
     if (readyRes?.data) setReadiness(readyRes.data);
   }, [app.tenant_id]);
+
+  useEffect(() => {
+    // The required set comes from the server rather than a list held here, so
+    // the two cannot drift apart.
+    get('controlhub/documents/types').then((res) => { if (res?.data) setDocTypes(res.data); });
+  }, []);
 
   // Readiness gates the activate button, so it is needed before the reviewer
   // opens the document list.
@@ -101,6 +110,31 @@ function ApplicationCard({ app, onActivated }) {
       });
     }
     setBusy(false);
+  };
+
+  const handleUpload = async (file) => {
+    if (!file) return;
+    if (!uploadType) {
+      toast.error('Choose which document this is first');
+      return;
+    }
+
+    setUploading(true);
+    const body = new FormData();
+    body.append('file', file);
+    body.append('document_type', uploadType);
+
+    const res = await upload(`controlhub/tenants/${app.tenant_id}/documents`, body);
+    if (res?.data) {
+      toast.success('Document uploaded', { description: `${file.name} is ready to review.` });
+      setUploadType('');
+      await loadReview();
+    } else {
+      toast.error('Could not upload the document', {
+        description: res?.error || 'PDF, JPEG, PNG or WebP only, up to 10 MB.'
+      });
+    }
+    setUploading(false);
   };
 
   const handleView = async (doc) => {
@@ -171,6 +205,37 @@ function ApplicationCard({ app, onActivated }) {
                   busy={busy}
                 />
               ))}
+
+              {/* Paperwork often arrives by email after the application is
+                  submitted, so the reviewer needs to be able to put it on file
+                  themselves rather than sending the applicant away. */}
+              <div className="doc-row" style={{ gap: '8px', flexWrap: 'wrap' }}>
+                <select
+                  className="input-field"
+                  aria-label="Document type to upload"
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  style={{ flex: '1 1 220px' }}
+                >
+                  <option value="">Add a document…</option>
+                  {docTypes.map((t) => (
+                    <option key={t} value={t}>{DOC_LABELS[t] || t}</option>
+                  ))}
+                </select>
+
+                <label className="btn btn-secondary" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+                  <Upload size={14} /> {uploading ? 'Uploading…' : 'Choose file'}
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    style={{ display: 'none' }}
+                    disabled={uploading || !uploadType}
+                    onChange={(e) => { handleUpload(e.target.files?.[0]); e.target.value = ''; }}
+                  />
+                </label>
+              </div>
+
+              <p className="doc-note">PDF, JPEG, PNG or WebP, up to 10 MB.</p>
             </div>
           </motion.div>
         )}

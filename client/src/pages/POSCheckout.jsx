@@ -18,6 +18,15 @@ export default function POSCheckout() {
   // be captured before that or the receipt renders with no lines.
   const [receiptItems, setReceiptItems] = useState([]);
   const [receiptTotals, setReceiptTotals] = useState({ subtotal: 0, vat: 0, total: 0 });
+  // SIMFIS, the simulated fiscalisation service. Held separately from the sale
+  // because it is not part of the sale: it is a demonstration of a mechanism
+  // this system is not authorised to perform for real.
+  const [fiscal, setFiscal] = useState(null);
+  const [fiscalising, setFiscalising] = useState(false);
+  // Interaction screening. `undefined` means not yet asked; the shape that
+  // comes back distinguishes "screened and clear" from "could not be screened",
+  // and those two must never be shown the same way.
+  const [screen, setScreen] = useState(undefined);
 
   const { 
     cart, 
@@ -94,6 +103,7 @@ export default function POSCheckout() {
             setReceiptData(res.data);
             setReceiptItems(soldItems);
             setReceiptTotals(soldTotals);
+            setFiscal(null);
             setShowReceipt(true);
             clearCart();
             return 'Sale completed successfully!';
@@ -103,6 +113,41 @@ export default function POSCheckout() {
         error: (err) => err.message || 'Failed to complete transaction'
       }
     );
+  };
+
+  // Screen the basket whenever it holds two or more medicines. Advisory: it
+  // informs the pharmacist and never blocks the sale, because a directory
+  // outage must not stop a pharmacy trading.
+  useEffect(() => {
+    const productIds = cart.map((i) => i.product_id);
+    if (productIds.length < 2) { setScreen(undefined); return; }
+
+    let cancelled = false;
+    (async () => {
+      const res = await post('drugs/interactions', { productIds });
+      if (cancelled) return;
+      // A missing response is itself "could not be screened". It must not read
+      // as clear.
+      setScreen(res?.data ? { ...res.data, message: res.message } : { available: false, interactions: [] });
+    })();
+
+    return () => { cancelled = true; };
+  }, [cart]);
+
+  const handleFiscalise = async () => {
+    if (!receiptData?.sale_id) return;
+    setFiscalising(true);
+
+    const res = await post(`fiscal/sales/${receiptData.sale_id}/fiscalise`, {});
+    if (res?.data) {
+      setFiscal(res.data);
+      toast.success('Fiscalised by SIMFIS', {
+        description: 'Simulated only — this is not a valid ZRA tax invoice.'
+      });
+    } else {
+      toast.error('Could not fiscalise the sale', { description: res?.error || 'The server rejected it.' });
+    }
+    setFiscalising(false);
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode && p.barcode.includes(search)));
@@ -135,7 +180,22 @@ export default function POSCheckout() {
 
         <div className="product-grid">
           {filteredProducts.map(p => (
-            <div key={p.product_id} className="product-card" onClick={() => { addToCart(p); toast.success(`Added ${p.name}`); }}>
+            <div
+              key={p.product_id}
+              className="product-card"
+              onClick={() => {
+                // Out of stock is refused here as well as by the checkout
+                // guard, so the cashier finds out before the patient is at the
+                // counter rather than after.
+                if ((p.quantity_on_hand ?? 0) <= 0) {
+                  toast.error(`${p.name} is out of stock`);
+                  return;
+                }
+                addToCart(p);
+                toast.success(`Added ${p.name}`);
+              }}
+              style={{ opacity: (p.quantity_on_hand ?? 0) <= 0 ? 0.55 : 1 }}
+            >
               <div>
                 <h4 style={{ color: '#fff', fontSize: '1rem' }}>{p.name}</h4>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
@@ -144,7 +204,12 @@ export default function POSCheckout() {
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '12px' }}>
-                <span className="stock-text" style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>Stock: {p.quantity_on_hand || 100}</span>
+                {/* The real figure. `|| 100` here showed "Stock: 100" for
+                    anything with none left, which is the catalogue inventing
+                    stock the pharmacy does not hold. */}
+                <span className="stock-text" style={{ fontSize: '0.8rem', color: (p.quantity_on_hand ?? 0) <= 0 ? 'var(--danger)' : 'var(--text-2)' }}>
+                  {(p.quantity_on_hand ?? 0) <= 0 ? 'Out of stock' : `Stock: ${p.quantity_on_hand}`}
+                </span>
                 <span className="price-text" style={{ color: '#4ade80', fontWeight: '700', fontSize: '1.1rem' }}>
                   {currency} <NumberFlow value={parseFloat(p.selling_price)} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                 </span>
@@ -191,6 +256,41 @@ export default function POSCheckout() {
         </div>
 
         <div>
+          {screen && (
+            <div
+              className="summary-card"
+              style={{
+                marginBottom: '12px',
+                borderLeft: `3px solid ${
+                  !screen.available ? 'var(--warn)' : screen.interactions.length > 0 ? 'var(--danger)' : 'var(--ok)'
+                }`
+              }}
+            >
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ fontSize: '0.85rem' }}>
+                    {!screen.available
+                      ? 'Basket could not be screened'
+                      : screen.interactions.length > 0
+                        ? 'Possible interactions'
+                        : 'No known interactions'}
+                  </strong>
+                  {/* Never claim a clear basket when nothing ran. The free NLM
+                      interaction API was withdrawn in January 2024 and the
+                      check fails closed until a licensed source is configured. */}
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', margin: '3px 0 0' }}>
+                    {!screen.available
+                      ? 'No interaction source is configured, so nothing was checked. Use your own judgement.'
+                      : screen.interactions.length > 0
+                        ? screen.interactions.map((i) => i.description || i.summary).join(' · ')
+                        : `${screen.checked} medicines screened.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {cart.some(i => i.requires_prescription) && (
             <div style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>Prescription ID (Required):</label>
@@ -249,6 +349,9 @@ export default function POSCheckout() {
           servedBy={user?.full_name || user?.username}
           currency={currency}
           paymentType={paymentType}
+          fiscal={fiscal}
+          onFiscalise={handleFiscalise}
+          fiscalising={fiscalising}
           onClose={() => setShowReceipt(false)}
         />
       )}

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Stamp } from 'lucide-react';
 
 /**
  * The paper a customer leaves the counter with.
@@ -37,7 +37,10 @@ const PAYMENT_LABELS = {
   insurance: 'Insurance'
 };
 
-export default function Receipt({ sale, items, totals, tenant, servedBy, currency = 'K', paymentType, fiscal, onClose }) {
+export default function Receipt({
+  sale, items, totals, tenant, servedBy, currency = 'K', paymentType,
+  fiscal, onFiscalise, fiscalising, onClose
+}) {
   // Escape closes the receipt. Capture phase so it does not reach the modal
   // sitting behind it and close both at once.
   useEffect(() => {
@@ -81,6 +84,14 @@ export default function Receipt({ sale, items, totals, tenant, servedBy, currenc
         <button className="btn btn-primary" onClick={() => window.print()}>
           <Printer size={15} /> Print receipt
         </button>
+        {/* Fiscalisation is a deliberate action, not something that happens to
+            every sale silently. SIMFIS is a simulation, and a simulated fiscal
+            block should only appear on a receipt because someone asked for it. */}
+        {onFiscalise && !fiscal && (
+          <button className="btn btn-secondary" onClick={onFiscalise} disabled={fiscalising}>
+            <Stamp size={15} /> {fiscalising ? 'Fiscalising…' : 'Fiscalise (simulated)'}
+          </button>
+        )}
         <button className="btn btn-secondary" onClick={onClose}>
           <X size={15} /> Close
         </button>
