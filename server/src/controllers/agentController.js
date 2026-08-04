@@ -1,3 +1,19 @@
+const ai = require('../services/aiProvider');
+
+const SYSTEM_PROMPT = [
+  'You are the pharmacy workflow assistant for PharmaPOS, a point-of-sale',
+  'system used by pharmacies in Zambia. You help staff with stock questions,',
+  'drug expiry checks, patient lookup, prescription status, triage queue',
+  'status, sale preparation, and general pharmacy workflow guidance.',
+  '',
+  'Be helpful, concise, and professional. When greeted, respond naturally.',
+  'When asked about pharmacy operations, give actionable guidance. Never',
+  'invent stock levels, patient data, or prescription details — direct the',
+  'user to check the relevant section of the system.',
+  '',
+  'Keep responses under 3 sentences unless the question needs more detail.'
+].join('\n');
+
 exports.query = async (req, res) => {
   try {
     const { prompt } = req.body;
@@ -7,14 +23,8 @@ exports.query = async (req, res) => {
     }
 
     const p = prompt.toLowerCase();
-    let result = {
-      intent: 'UNKNOWN',
-      confidence: 0.35,
-      response: 'I could not match that request to a pharmacy workflow yet.',
-      proposed_action: null,
-      requires_confirmation: false
-    };
-    
+    let result = null;
+
     if (p.includes('stock') || p.includes('how many') || p.includes('inventory')) {
       result = {
         intent: 'STOCK_LOOKUP',
@@ -65,10 +75,41 @@ exports.query = async (req, res) => {
       };
     }
 
+    if (result) {
+      return res.json({
+        message: 'Query processed',
+        data: { ...result, original_prompt: prompt }
+      });
+    }
+
+    const aiResult = await ai.ask({
+      system: SYSTEM_PROMPT,
+      prompt,
+      maxTokens: 512
+    });
+
+    if (aiResult.available) {
+      return res.json({
+        message: 'Query processed',
+        data: {
+          intent: 'AI_RESPONSE',
+          confidence: 0.9,
+          response: aiResult.text,
+          proposed_action: null,
+          requires_confirmation: false,
+          original_prompt: prompt
+        }
+      });
+    }
+
     res.json({
       message: 'Query processed',
       data: {
-        ...result,
+        intent: 'UNKNOWN',
+        confidence: 0.35,
+        response: 'I can help with stock checks, expiry reviews, patient lookup, prescription status, queue status, and sale preparation. Try asking about one of those topics.',
+        proposed_action: null,
+        requires_confirmation: false,
         original_prompt: prompt
       }
     });
