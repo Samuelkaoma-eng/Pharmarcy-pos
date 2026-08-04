@@ -174,10 +174,17 @@ Checked by request rather than assumed:
 Two things worth recording because they were open questions beforehand:
 
 1. **The Postgres image is `postgres-ssl`, and `config/db.js` builds its Pool with
-   no SSL option.** This works because `DB_HOST` resolves to
-   `postgres.railway.internal` — traffic stays on Railway's private network and
-   is not required to negotiate TLS. Pointing `DB_HOST` at a public proxy host
-   instead would fail, and would need an `ssl` option adding to the Pool.
+   no SSL option.** This is correct as configured, not a latent fault: `DB_HOST`
+   is set to `postgres.railway.internal`, so the connection stays inside
+   Railway's private network, where TLS is not required. It is verified working.
+
+   The condition to be aware of is what happens if `DB_HOST` is ever repointed at
+   Railway's public TCP proxy. The connection would then cross the public internet
+   with no transport encryption, carrying the database password and patient data
+   in clear text. Whether Postgres would refuse it outright or merely allow it
+   depends on the image's `pg_hba` rules and has not been tested here — but the
+   confidentiality problem holds either way. Anyone moving off the private network
+   must add an `ssl` option to the Pool first.
 2. **`JWT_SECRET` is set to a generated 96-character value**, not the fallback in
    `middleware/auth.js`. That fallback is committed to this repository; a
    deployment relying on it could have its tokens forged by anyone who has read
