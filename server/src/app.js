@@ -22,6 +22,8 @@ const supplierController = require('./controllers/supplierController');
 const insuranceController = require('./controllers/insuranceController');
 const drugController = require('./controllers/drugController');
 const fiscalController = require('./controllers/fiscalController');
+const insightController = require('./controllers/insightController');
+const recallController = require('./controllers/recallController');
 
 const { authenticate, controlHubOnly, requireRole } = require('./middleware/auth');
 
@@ -150,6 +152,19 @@ apiRouter.get('/insurance/coverage/:customerId', insuranceController.getCoverage
 apiRouter.get('/fiscal/status', fiscalController.getStatus);
 apiRouter.post('/fiscal/sales/:id/fiscalise', requireRole('Admin', 'Pharmacist', 'Cashier'), fiscalController.fiscaliseSale);
 apiRouter.get('/fiscal/sales/:id/verify', fiscalController.verifySale);
+
+// Patient recall. The list is real; the reminders are simulated and never sent.
+apiRouter.get('/recalls/status', recallController.getStatus);
+apiRouter.get('/recalls', recallController.getRecalls);
+apiRouter.post('/recalls', requireRole('Admin', 'Pharmacist', 'Doctor'), recallController.createRecall);
+apiRouter.post('/recalls/:id/remind', requireRole('Admin', 'Pharmacist'), recallController.simulateReminder);
+apiRouter.patch('/recalls/:id', requireRole('Admin', 'Pharmacist'), recallController.updateRecall);
+
+// Clinical insight. Shows what this pharmacy recorded before for similar
+// presentations, and counts complaints trending unusually. It never diagnoses.
+apiRouter.get('/insight/status', insightController.getStatus);
+apiRouter.get('/insight/visits/:id/similar', requireRole('Admin', 'Pharmacist', 'Doctor'), insightController.getSimilarPresentations);
+apiRouter.get('/insight/trends', requireRole('Admin', 'Pharmacist', 'Doctor'), insightController.getTrends);
 
 // Drug directory. Reference data, not clinical authority.
 apiRouter.get('/drugs/search', drugController.search);
