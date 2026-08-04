@@ -23,6 +23,7 @@ const insuranceController = require('./controllers/insuranceController');
 const drugController = require('./controllers/drugController');
 const fiscalController = require('./controllers/fiscalController');
 const tillController = require('./controllers/tillController');
+const reportController = require('./controllers/reportController');
 const insightController = require('./controllers/insightController');
 const recallController = require('./controllers/recallController');
 
@@ -228,6 +229,15 @@ apiRouter.get('/till/sessions', tillController.getSessions);
 apiRouter.post('/till/open', requireRole('Admin', 'Pharmacist', 'Cashier'), tillController.open);
 apiRouter.get('/till/sessions/:id', tillController.getSession);
 apiRouter.post('/till/sessions/:id/close', requireRole('Admin', 'Pharmacist', 'Cashier'), tillController.close);
+
+// Reporting. Working figures the pharmacy prepares from its own records — for
+// the owner, and for whoever prepares its VAT return. Nothing here is a filing
+// and nothing here is a Smart Invoice. Restricted to the people entitled to
+// see trading and patient-level dispensing data.
+apiRouter.get('/reports/vat', requireRole('Admin', 'Pharmacist'), reportController.vatSummary);
+apiRouter.get('/reports/trading', requireRole('Admin', 'Pharmacist'), reportController.tradingSummary);
+apiRouter.get('/reports/stock', requireRole('Admin', 'Pharmacist'), reportController.stockValuation);
+apiRouter.get('/reports/dispensing', requireRole('Admin', 'Pharmacist'), reportController.dispensingRegister);
 
 // Receipts
 apiRouter.get('/receipts/:receiptNumber/html', receiptController.getReceiptHtml);
