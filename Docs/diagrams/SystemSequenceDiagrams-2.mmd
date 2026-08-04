@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor Staff
+    participant System as :System
+
+    Staff->>System: getPharmacyDirectory()
+    activate System
+    System-->>Staff: list of pharmacies open for sign-in
+    deactivate System
+
+    Staff->>System: signIn(username, password, tenantId)
+    activate System
+    Note over System: match within pharmacy,<br/>verify hash, check pharmacy is ACTIVE
+    System-->>Staff: token, refresh token, user, role, pharmacy
+    deactivate System
+
+    Staff->>System: getProfile()
+    activate System
+    System-->>Staff: full name, role, pharmacy branding
+    deactivate System

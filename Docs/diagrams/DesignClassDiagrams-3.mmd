@@ -1,0 +1,38 @@
+classDiagram
+    direction LR
+
+    class ApprovalController {
+        <<module>>
+        -ACTIONS : Map
+        +getActions(req, res) void
+        +createRequest(req, res) Promise
+        +decide(req, res) Promise
+    }
+
+    class ApprovalAction {
+        <<interface>>
+        +label : String
+        +apply(client, payload) Promise
+    }
+
+    class SuspendTenant {
+        +label = Suspend a pharmacy
+        +apply(client, payload) Promise
+    }
+
+    class ActivateTenant {
+        +label = Activate a pharmacy
+        +apply(client, payload) Promise
+    }
+
+    class DeactivateUser {
+        +label = Deactivate a staff account
+        +apply(client, payload) Promise
+    }
+
+    ApprovalController o-- ApprovalAction : selects by key
+    ApprovalAction <|.. SuspendTenant
+    ApprovalAction <|.. ActivateTenant
+    ApprovalAction <|.. DeactivateUser
+
+    note for ApprovalController "decide() never branches on the action name. It looks the strategy up and invokes apply()."

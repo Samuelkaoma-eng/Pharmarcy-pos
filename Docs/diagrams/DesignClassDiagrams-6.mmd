@@ -1,0 +1,33 @@
+classDiagram
+    direction TB
+
+    class ApiFacade {
+        <<module>>
+        +BASE_URL : String
+        -formatUrl(endpoint) String
+        +getHeaders() Object
+        +get(endpoint) Promise
+        +post(endpoint, data) Promise
+        +put(endpoint, data) Promise
+        +patch(endpoint, data) Promise
+        +upload(endpoint, formData) Promise
+        +openAuthedFile(endpoint) Promise
+    }
+
+    class AuthContext {
+        +user
+        +login(credentials)
+        +logout()
+    }
+
+    class Page {
+        <<React component>>
+        +useEffect() void
+        +render() JSX
+    }
+
+    Page ..> ApiFacade
+    Page ..> AuthContext
+    AuthContext ..> ApiFacade
+
+    note for ApiFacade "No page calls fetch directly. Token attachment and 401 handling exist once."

@@ -57,7 +57,19 @@ const initDb = async () => {
         console.log('✅ Database schema created successfully');
       }
 
-      if (fs.existsSync(seedPath)) {
+      // The seed is demonstration data: named pharmacies, and staff accounts
+      // whose password is published in the demo script. Applying it to a
+      // production database on first boot would create real, reachable logins
+      // with a known password, so it is withheld there unless asked for
+      // explicitly. The schema above is always applied — an empty database is
+      // a usable one, a database seeded with known credentials is not.
+      const seedAllowed = process.env.NODE_ENV !== 'production' || process.env.SEED_DEMO_DATA === 'true';
+
+      if (!fs.existsSync(seedPath)) {
+        // nothing to seed
+      } else if (!seedAllowed) {
+        console.log('↩️  Seed data withheld in production. Set SEED_DEMO_DATA=true to load it.');
+      } else {
         const seed = fs.readFileSync(seedPath, 'utf8');
         await pool.query(seed);
         console.log('✅ Initial seed data inserted successfully');

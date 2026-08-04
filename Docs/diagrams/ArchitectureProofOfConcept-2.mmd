@@ -1,0 +1,21 @@
+flowchart LR
+    subgraph Counter["Pharmacy counter"]
+        Browser["Browser<br/>React SPA"]
+        Printer["80mm thermal printer"]
+    end
+
+    subgraph Host["Application host"]
+        Node["Node 20 · Express<br/>port 5000"]
+        Uploads[("Upload directory<br/>outside source tree")]
+    end
+
+    PG[("PostgreSQL 18<br/>port 5432")]
+    FDA["openFDA NDC directory<br/>public, no key"]
+    RX["Licensed interaction source<br/>INTERACTION_API_URL — not configured"]
+
+    Browser -->|"/api, same origin in production;<br/>Vite proxy in development"| Node
+    Browser -.->|window.print| Printer
+    Node --> PG
+    Node --> Uploads
+    Node -->|outbound HTTPS| FDA
+    Node -.->|"absent: screening fails closed"| RX

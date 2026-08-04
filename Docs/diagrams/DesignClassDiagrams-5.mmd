@@ -1,0 +1,17 @@
+stateDiagram-v2
+    [*] --> WAITING : createVisit
+
+    WAITING --> TRIAGE : recordVitals
+    WAITING --> IN_PROGRESS : assignDoctor
+    TRIAGE --> IN_PROGRESS : assignDoctor
+    IN_PROGRESS --> DISPENSING : recordAssessment
+    IN_PROGRESS --> COMPLETED : updateStatus
+    DISPENSING --> COMPLETED : sale records visit_id
+
+    WAITING --> CANCELLED
+    TRIAGE --> CANCELLED
+    IN_PROGRESS --> CANCELLED
+    DISPENSING --> CANCELLED
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]

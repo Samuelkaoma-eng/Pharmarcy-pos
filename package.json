@@ -1,0 +1,19 @@
+{
+  "name": "group-16-pharmacy-pos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-tenant pharmacy point-of-sale and dispensing platform. Deployed as a single service: the server serves the built client from its own origin.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install:server": "npm --prefix server ci || npm --prefix server install",
+    "install:client": "npm --prefix client ci || npm --prefix client install",
+    "install:all": "npm run install:server && npm run install:client",
+    "build": "npm run install:all && npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test",
+    "lint": "npm --prefix server run lint",
+    "db:reset": "npm --prefix server run db:reset"
+  }
+}

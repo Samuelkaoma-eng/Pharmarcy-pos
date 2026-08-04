@@ -1,0 +1,33 @@
+sequenceDiagram
+    actor Cashier
+    participant System as :System
+
+    Cashier->>System: startNewSale()
+    activate System
+    System-->>Cashier: empty basket
+    deactivate System
+
+    loop for each product in the basket
+        Cashier->>System: addLineItem(productId | barcode, quantity)
+        activate System
+        System-->>Cashier: description, unit price, running total
+        deactivate System
+    end
+
+    opt patient identified
+        Cashier->>System: identifyPatient(customerId)
+        activate System
+        System-->>Cashier: patient, active insurance cover
+        deactivate System
+    end
+
+    Cashier->>System: completeSale(customerId, prescriptionId, items, paymentType)
+    activate System
+    Note over System: guards, pricing, VAT, cover split,<br/>all inside one transaction
+    System-->>Cashier: receiptNumber, subtotal, tax, total,<br/>schemeCovered, patientPayable
+    deactivate System
+
+    Cashier->>System: printReceipt(receiptNumber)
+    activate System
+    System-->>Cashier: receipt document
+    deactivate System

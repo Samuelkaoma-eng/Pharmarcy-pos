@@ -1,0 +1,64 @@
+classDiagram
+    direction TB
+
+    class SaleController {
+        <<module>>
+        -VAT_RATE : Number = 0.16
+        +createSale(req, res) Promise
+        +getSales(req, res) Promise
+        +getSale(req, res) Promise
+    }
+
+    class Db {
+        <<module>>
+        -pool : Pool
+        -dbAvailable : Boolean
+        +query(text, params) Promise
+        +initDb() Promise
+        +isDbAvailable() Boolean
+        +unavailable(res) Response
+    }
+
+    class AuthMiddleware {
+        <<module>>
+        -JWT_SECRET : String
+        +authenticate(req, res, next) void
+        +requireRole(roles) Function
+        +controlHubOnly(req, res, next) void
+        +generateToken(payload) String
+        +generateRefreshToken(payload) String
+    }
+
+    class ReceiptController {
+        <<module>>
+        -escapeHtml(str) String
+        +getReceiptHtml(req, res) Promise
+    }
+
+    class FiscalController {
+        <<module>>
+        +getStatus(req, res) Promise
+        +fiscaliseSale(req, res) Promise
+        +verifySale(req, res) Promise
+    }
+
+    class FiscalSimulator {
+        <<module>>
+        -DEVICE_SECRET : String
+        -counters : Map
+        -nextCounter(tenantId) Number
+        +fiscalise(saleFacts) SimulatedReceipt
+        +verify(saleFacts) VerificationResult
+        +deviceIdFor(tenantId) String
+        +NOTICE : String
+    }
+
+    AuthMiddleware ..> SaleController : admits
+    SaleController ..> Db : transaction
+    ReceiptController ..> Db : reads
+    FiscalController ..> Db : reads
+    FiscalController ..> FiscalSimulator : delegates
+    FiscalSimulator ..> Db : never
+
+    note for SaleController "All guards run inside one BEGIN. Any throw rolls back, so a refused sale leaves no trace."
+    note for FiscalSimulator "Writes only to simulated columns. It can never set sales.smart_invoice_ref."

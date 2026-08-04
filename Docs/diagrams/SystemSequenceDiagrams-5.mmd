@@ -1,0 +1,14 @@
+sequenceDiagram
+    actor Pharmacist
+    participant System as :System
+
+    Pharmacist->>System: getPurchaseOrder(poId)
+    activate System
+    System-->>Pharmacist: supplier, lines, ordered and already received
+    deactivate System
+
+    Pharmacist->>System: receiveAgainstOrder(poId, lines)
+    activate System
+    Note over System: one transaction across every line<br/>batch, movement and line total per line
+    System-->>Pharmacist: order status RECEIVED or PARTIALLY_RECEIVED
+    deactivate System

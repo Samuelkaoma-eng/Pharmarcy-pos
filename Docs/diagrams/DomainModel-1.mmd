@@ -1,0 +1,201 @@
+classDiagram
+    direction LR
+
+    class Pharmacy {
+        name
+        address
+        licenceNumber
+        status
+        currencySymbol
+        expiryAlertDays
+    }
+
+    class Staff {
+        username
+        fullName
+        role
+        isActive
+    }
+
+    class Patient {
+        name
+        phone
+        nrc
+        dateOfBirth
+        gender
+    }
+
+    class Prescriber {
+        name
+        specialty
+        licenceNumber
+    }
+
+    class Product {
+        name
+        dosage
+        category
+        sellingPrice
+        costPrice
+        unitOfMeasure
+        requiresPrescription
+        vatTreatment
+        reorderLevel
+    }
+
+    class Batch {
+        batchNumber
+        expiryDate
+        quantityOnHand
+    }
+
+    class StockMovement {
+        quantity
+        movementType
+        occurredAt
+        note
+    }
+
+    class Sale {
+        receiptNumber
+        dateTime
+        subtotal
+        taxAmount
+        total
+        status
+    }
+
+    class SaleLineItem {
+        quantity
+        unitPrice
+        subtotal
+    }
+
+    class Payment {
+        amount
+        paymentType
+        referenceCode
+    }
+
+    class Prescription {
+        validUntil
+        status
+        notes
+    }
+
+    class PrescriptionLineItem {
+        quantity
+        dosageInstructions
+    }
+
+    class Visit {
+        date
+        reason
+        status
+        queueNumber
+    }
+
+    class Vitals {
+        bloodPressure
+        heartRate
+        temperature
+        oxygenSaturation
+        weight
+    }
+
+    class Supplier {
+        name
+        tpin
+        zamraLicence
+        contactName
+    }
+
+    class PurchaseOrder {
+        orderNumber
+        status
+        expectedDate
+    }
+
+    class PurchaseOrderLineItem {
+        quantityOrdered
+        quantityReceived
+        unitCost
+    }
+
+    class InsuranceScheme {
+        name
+        coverPercent
+        isActive
+    }
+
+    class SchemeMembership {
+        memberNumber
+        validUntil
+        isActive
+    }
+
+    class ComplianceDocument {
+        documentType
+        fileName
+        status
+        reviewNotes
+        reviewedAt
+    }
+
+    class ApprovalRequest {
+        action
+        proposedChange
+        reason
+        status
+        requestedAt
+        decidedAt
+    }
+
+    Pharmacy "1" -- "*" Staff : employs
+    Pharmacy "1" -- "*" Patient : registers
+    Pharmacy "1" -- "*" Product : stocks
+    Pharmacy "1" -- "*" Sale : records
+    Pharmacy "1" -- "*" ComplianceDocument : submits
+    Pharmacy "1" -- "*" Supplier : buys from
+    Pharmacy "1" -- "*" InsuranceScheme : accepts
+
+    Product "1" -- "*" Batch : is held as
+    Batch "0..1" -- "*" StockMovement : is moved by
+    Product "1" -- "*" StockMovement : is moved by
+    Staff "1" -- "*" StockMovement : performs
+
+    Sale "1" *-- "1..*" SaleLineItem : contains
+    SaleLineItem "*" -- "1" Product : is for
+    SaleLineItem "*" -- "0..1" Batch : is drawn from
+    Sale "1" -- "1..*" Payment : is settled by
+    Sale "*" -- "1" Staff : is served by
+    Sale "*" -- "0..1" Patient : is for
+    Sale "*" -- "0..1" Prescription : is authorised by
+    Sale "*" -- "0..1" InsuranceScheme : is part covered by
+
+    Prescription "1" *-- "1..*" PrescriptionLineItem : lists
+    PrescriptionLineItem "*" -- "1" Product : names
+    Prescription "*" -- "1" Patient : is written for
+    Prescription "*" -- "0..1" Prescriber : is written by
+    Prescription "*" -- "0..1" Staff : is verified by
+    Prescription "*" -- "0..1" Visit : arises from
+
+    Visit "*" -- "1" Patient : is made by
+    Visit "*" -- "0..1" Prescriber : is seen by
+    Visit "1" -- "0..*" Vitals : records
+    Vitals "*" -- "1" Staff : is taken by
+
+    Supplier "1" -- "*" PurchaseOrder : receives
+    PurchaseOrder "1" *-- "1..*" PurchaseOrderLineItem : orders
+    PurchaseOrderLineItem "*" -- "1" Product : is for
+    PurchaseOrder "*" -- "1" Staff : is raised by
+    Supplier "1" -- "*" Batch : supplied
+    Supplier "1" -- "*" StockMovement : supplied
+
+    InsuranceScheme "1" -- "*" SchemeMembership : grants
+    SchemeMembership "*" -- "1" Patient : covers
+
+    ComplianceDocument "*" -- "0..1" Staff : is reviewed by
+    ApprovalRequest "*" -- "1" Staff : is raised by
+    ApprovalRequest "*" -- "0..1" Staff : is decided by
+    ApprovalRequest "*" -- "0..1" Pharmacy : targets

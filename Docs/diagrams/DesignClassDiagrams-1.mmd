@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph Presentation
+        Pages[React pages and layouts]
+        Facade[api/client.js]
+    end
+
+    subgraph Boundary
+        App[app.js route table]
+        Auth[middleware/auth.js]
+    end
+
+    subgraph Application
+        Controllers[controllers/*.js]
+    end
+
+    subgraph DomainServices["Domain services"]
+        Services[services/*.js]
+    end
+
+    subgraph Technical
+        Db[config/db.js]
+        Pg[(PostgreSQL)]
+    end
+
+    Pages --> Facade
+    Facade -->|HTTP JSON| App
+    App --> Auth
+    Auth --> Controllers
+    Controllers --> Services
+    Controllers --> Db
+    Services --> Db
+    Db --> Pg

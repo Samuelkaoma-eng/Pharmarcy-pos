@@ -1,0 +1,20 @@
+sequenceDiagram
+    actor Maker as Operator A (maker)
+    actor Checker as Operator B (checker)
+    participant System as :System
+
+    Maker->>System: createApprovalRequest(action, payload, reason)
+    activate System
+    System-->>Maker: request in PENDING
+    deactivate System
+
+    Checker->>System: getApprovalRequests(status=PENDING)
+    activate System
+    System-->>Checker: requests, with proposer and reason
+    deactivate System
+
+    Checker->>System: decideApprovalRequest(requestId, APPROVED, notes)
+    activate System
+    Note over System: row lock, still pending,<br/>checker is not the maker
+    System-->>Checker: request approved and applied
+    deactivate System
