@@ -29,6 +29,9 @@ INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role)
 ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'System Administrator', 'Admin'),
 ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', 'pharmacist', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Dr. Blessing Yabe (Pharmacist)', 'Pharmacist'),
 ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111111', 'cashier', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Samuel Kaoma (Cashier)', 'Cashier'),
+-- A prescriber who actually works here, so the consulting side of the queue has
+-- someone who can sign in and be handed patients.
+('22222222-2222-2222-2222-222222222204', '11111111-1111-1111-1111-111111111111', 'doctor', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Dr. Martin Phiri', 'Doctor'),
 ('22222222-2222-2222-2222-222222222901', '99999999-9999-9999-9999-999999999999', 'admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Riverside Administrator', 'Admin'),
 ('22222222-2222-2222-2222-222222222902', '99999999-9999-9999-9999-999999999999', 'riverside_cashier', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Riverside Cashier', 'Cashier')
 ON CONFLICT (user_id) DO UPDATE SET password_hash = EXCLUDED.password_hash;
@@ -42,13 +45,19 @@ ON CONFLICT (product_id) DO NOTHING;
 INSERT INTO customers (customer_id, tenant_id, name, phone, email, nrc, gender, dob, address) VALUES
 ('33333333-3333-3333-3333-333333333301', '11111111-1111-1111-1111-111111111111', 'Chipego Mukimba', '+260965111222', 'chipego@example.com', '111222/10/1', 'Female', '1998-05-14', 'Plot 45, Olympia Park, Lusaka'),
 ('33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111111', 'Joshua Kamunda', '+260977333444', 'joshua@example.com', '333444/10/1', 'Male', '1995-11-20', 'Plot 12, Roma, Lusaka'),
-('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111111', 'Maximillan Soko', '+260955555666', 'max@example.com', '555666/10/1', 'Male', '1997-03-08', 'Kalingalinga, Lusaka')
+('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111111', 'Maximillan Soko', '+260955555666', 'max@example.com', '555666/10/1', 'Male', '1997-03-08', 'Kalingalinga, Lusaka'),
+-- A patient of the second pharmacy, so tenant isolation can be tested with a
+-- real record on each side rather than only an absence on one.
+('33333333-3333-3333-3333-333333333901', '99999999-9999-9999-9999-999999999999', 'Riverside Patient', '+260954444555', 'patient@riverside.example', '777888/10/1', 'Female', '1990-02-11', 'Kafue Road, Lusaka')
 ON CONFLICT (customer_id) DO NOTHING;
 
 -- 4. Insert Doctors
-INSERT INTO doctors (doctor_id, tenant_id, name, specialty, phone, license_number) VALUES
-('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', 'Dr. Martin Phiri', 'General Medicine', '+260977112233', 'HPCZ-MD-4091'),
-('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', 'Dr. Sarah Banda', 'Pediatrics', '+260966445566', 'HPCZ-MD-5120')
+-- Dr. Phiri works here and holds an account, so visits can be assigned to him
+-- and he sees his own queue. Dr. Banda is a referring paediatrician with no
+-- login: her prescriptions are honoured, but nothing is routed to her.
+INSERT INTO doctors (doctor_id, tenant_id, user_id, name, specialty, phone, license_number) VALUES
+('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222204', 'Dr. Martin Phiri', 'General Medicine', '+260977112233', 'HPCZ-MD-4091'),
+('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', NULL, 'Dr. Sarah Banda', 'Pediatrics', '+260966445566', 'HPCZ-MD-5120')
 ON CONFLICT (doctor_id) DO NOTHING;
 
 -- 5. Insert Products
@@ -78,9 +87,9 @@ INSERT INTO stock_movements (movement_id, tenant_id, product_id, batch_id, quant
 ON CONFLICT (movement_id) DO NOTHING;
 
 -- 8. Insert Visits
-INSERT INTO visits (visit_id, tenant_id, customer_id, doctor_id, date, reason, status, queue_number) VALUES
-('88888888-8888-8888-8888-888888888801', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Persistent cough and mild fever', 'IN_PROGRESS', 1),
-('88888888-8888-8888-8888-888888888802', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333302', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Routine blood pressure checkup', 'WAITING', 2)
+INSERT INTO visits (visit_id, tenant_id, customer_id, doctor_id, date, reason, assessment, status, queue_number) VALUES
+('88888888-8888-8888-8888-888888888801', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Persistent cough and mild fever', 'Upper respiratory tract infection', 'IN_PROGRESS', 1),
+('88888888-8888-8888-8888-888888888802', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333302', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Routine blood pressure checkup', NULL, 'WAITING', 2)
 ON CONFLICT (visit_id) DO NOTHING;
 
 -- 9. Insert Vitals

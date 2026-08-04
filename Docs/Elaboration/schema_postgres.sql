@@ -4,6 +4,7 @@
 -- ====================================================================
 
 -- Drop tables in dependency order
+DROP TABLE IF EXISTS patient_recalls CASCADE;
 DROP TABLE IF EXISTS scheme_memberships CASCADE;
 DROP TABLE IF EXISTS insurance_schemes CASCADE;
 DROP TABLE IF EXISTS purchase_order_items CASCADE;
@@ -14,6 +15,7 @@ DROP TABLE IF EXISTS onboarding_documents CASCADE;
 DROP TABLE IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS sale_items CASCADE;
 DROP TABLE IF EXISTS sales CASCADE;
+DROP TABLE IF EXISTS till_sessions CASCADE;
 DROP TABLE IF EXISTS prescription_items CASCADE;
 DROP TABLE IF EXISTS prescriptions CASCADE;
 DROP TABLE IF EXISTS vitals CASCADE;
@@ -23,6 +25,7 @@ DROP TABLE IF EXISTS product_batches CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS tenants CASCADE;
 
@@ -44,6 +47,11 @@ CREATE TABLE tenants (
     expiry_alert_days INT DEFAULT 90 CHECK (expiry_alert_days BETWEEN 7 AND 365),
     low_stock_alerts BOOLEAN DEFAULT TRUE,
     require_customer_on_sale BOOLEAN DEFAULT FALSE,
+    -- When on, a sale is refused unless the cashier has an open till session,
+    -- so every taking is attributable to a shift that must later be counted.
+    -- Off by default: a pharmacy that has not adopted till control keeps
+    -- working exactly as before.
+    require_till_session BOOLEAN DEFAULT FALSE,
     allow_public_registration BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -62,6 +70,39 @@ CREATE TABLE users (
     UNIQUE(tenant_id, username)
 );
 
+-- 2a. REFRESH TOKENS
+-- Sessions that can actually be ended.
+--
+-- The refresh token was previously a stateless JWT with a seven-day life. It
+-- could not be revoked, so signing out cleared the browser and left the token
+-- working; a copied one stayed valid for a week whatever the pharmacy did.
+--
+-- Each token is stored only as a SHA-256 hash, so the table is useless to
+-- anyone who reads it. Every sign-in starts a new *family*, and each refresh
+-- consumes the token presented and issues its successor in the same family.
+-- Rotation is what makes theft detectable: the thief and the real user cannot
+-- both keep using one chain, so whichever presents an already-spent token
+-- reveals the theft. At that point it is unknowable which party is which, so
+-- the whole family is revoked rather than the single token replayed.
+CREATE TABLE refresh_tokens (
+    token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    -- SHA-256 of the value handed to the browser. The raw token is never stored.
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    -- One chain per sign-in, so revoking one device leaves the others alone.
+    family_id UUID NOT NULL,
+    issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    -- Set when this link is exchanged. A second presentation of a spent token
+    -- is a replay, not a refresh.
+    used_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    -- Recorded so a suspicious chain can be recognised after the fact.
+    ip VARCHAR(64),
+    user_agent TEXT
+);
+
 -- 3. CUSTOMERS (Patients)
 CREATE TABLE customers (
     customer_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,14 +118,21 @@ CREATE TABLE customers (
 );
 
 -- 4. DOCTORS
+-- A prescriber. Two kinds exist and the difference matters: a doctor who works
+-- at this pharmacy has a login and can be handed a queue, while one who wrote a
+-- prescription at a clinic elsewhere is a name on paper with no account. The
+-- nullable user_id is what separates them.
 CREATE TABLE doctors (
     doctor_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
     name VARCHAR(100) NOT NULL,
     specialty VARCHAR(100),
     phone VARCHAR(20),
     license_number VARCHAR(50),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    -- One account cannot be two prescribers in the same pharmacy.
+    UNIQUE(tenant_id, user_id)
 );
 
 -- 5. PRODUCTS
@@ -142,6 +190,18 @@ CREATE TABLE stock_movements (
 );
 
 -- 8. VISITS (Triage/Consultations)
+-- One patient's passage through the clinic side of the pharmacy. The status is
+-- the station they have reached, and the system advances it as the work is
+-- done rather than leaving staff to set it by hand:
+--
+--   WAITING   -> registered at reception, nobody has seen them
+--   TRIAGE    -> vitals taken (set automatically when vitals are recorded)
+--   IN_PROGRESS -> a doctor has been assigned and is seeing them
+--   DISPENSING  -> consultation over, prescription sent to the counter
+--   COMPLETED   -> dispensed and paid for
+--
+-- Without a DISPENSING state nobody could tell where a patient was between the
+-- consulting room and the till, which is the gap that made the queue advisory.
 CREATE TABLE visits (
     visit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
@@ -149,9 +209,15 @@ CREATE TABLE visits (
     doctor_id UUID REFERENCES doctors(doctor_id),
     date DATE DEFAULT CURRENT_DATE,
     reason TEXT,
-    status VARCHAR(20) DEFAULT 'WAITING' CHECK (status IN ('WAITING','TRIAGE','IN_PROGRESS','COMPLETED','CANCELLED')),
+    -- What the clinician concluded. Free text, recorded by the person who saw
+    -- the patient. It is a record of what was assessed, never a computed
+    -- diagnosis.
+    assessment TEXT,
+    status VARCHAR(20) DEFAULT 'WAITING'
+        CHECK (status IN ('WAITING','TRIAGE','IN_PROGRESS','DISPENSING','COMPLETED','CANCELLED')),
     queue_number INT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
 );
 
 -- 9. VITALS
@@ -192,6 +258,49 @@ CREATE TABLE prescription_items (
     quantity INT DEFAULT 1
 );
 
+-- 11a. TILL SESSIONS
+-- A shift at a till. Until this existed a sale belonged to a cashier but not to
+-- a shift, so there was no float, no closing count and no cash variance: a
+-- drawer could be short and nothing in the system would say so. That is the
+-- stock loss the Inception business case set out to reduce, so its absence was
+-- the largest gap between what the project promised and what it did (LIM-004).
+--
+-- Two rules make the reconciliation meaningful, and both are enforced by the
+-- server rather than trusted from the client:
+--   * expected_cash is computed from the payments actually recorded against
+--     this session. A cashier cannot declare what the drawer should hold.
+--   * only cash payments count. Card, mobile and insurance settlements never
+--     put a note in the drawer, so including them would manufacture a shortfall.
+CREATE TABLE till_sessions (
+    till_session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    -- The cashier whose shift this is. Named at open and never reassigned.
+    user_id UUID NOT NULL REFERENCES users(user_id),
+    status VARCHAR(10) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','CLOSED')),
+    opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Cash placed in the drawer at the start of the shift.
+    opening_float NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (opening_float >= 0),
+    opening_notes TEXT,
+    closed_at TIMESTAMPTZ,
+    closed_by_id UUID REFERENCES users(user_id),
+    -- Cash physically counted at the end of the shift, as declared by whoever
+    -- counted it.
+    closing_count NUMERIC(10,2) CHECK (closing_count >= 0),
+    -- What the drawer should have held, computed by the server at close.
+    expected_cash NUMERIC(10,2),
+    -- closing_count - expected_cash. Negative means the drawer is short. It is
+    -- stored as it falls out and is never rounded towards zero.
+    variance NUMERIC(10,2),
+    closing_notes TEXT
+);
+
+-- A cashier may hold at most one open session at a time. Enforced by the
+-- database rather than by a check in the controller, because a double-open is
+-- exactly the race a busy counter would produce.
+CREATE UNIQUE INDEX idx_till_one_open_per_user
+    ON till_sessions(tenant_id, user_id)
+    WHERE status = 'OPEN';
+
 -- 12. SALES
 CREATE TABLE sales (
     sale_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -205,6 +314,15 @@ CREATE TABLE sales (
     user_id UUID REFERENCES users(user_id),
     customer_id UUID REFERENCES customers(customer_id),
     prescription_id UUID REFERENCES prescriptions(prescription_id),
+    -- The visit this sale settles, where the patient came through the clinic.
+    -- Without it the walk-in-to-till trail could only be reconstructed through
+    -- the prescription, so a consultation that ended in no prescription left no
+    -- link at all.
+    visit_id UUID REFERENCES visits(visit_id),
+    -- The shift this sale was rung up on. Null for a sale taken outside any
+    -- open session, which is legitimate where the pharmacy has not turned till
+    -- control on, and is reported as unreconciled rather than hidden.
+    till_session_id UUID REFERENCES till_sessions(till_session_id),
     -- What an insurance scheme covered, and what the patient paid themselves.
     -- The foreign key is added once insurance_schemes exists, further down.
     scheme_id UUID,
@@ -343,6 +461,36 @@ CREATE TABLE scheme_memberships (
     UNIQUE(scheme_id, customer_id)
 );
 
+-- 20. PATIENT RECALLS
+-- Bringing a patient back for a check-up: a chronic review, a course of
+-- treatment to follow up, a repeat prescription falling due.
+--
+-- Reminders are SIMULATED, never sent. This system has no messaging gateway
+-- and is not a registered sender with any Zambian network. The simulation
+-- follows the SIMFIS precedent exactly: its own columns so a simulated
+-- reference can never occupy a field meant for a real one, a `SIMSMS-` prefix
+-- on every reference, and a notice on every artefact. A pharmacy that believed
+-- a reminder had gone out when it had not would stop chasing a patient who
+-- never heard from them, which is worse than sending nothing.
+CREATE TABLE patient_recalls (
+    recall_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    -- The visit this follow-up arose from, where it arose from one.
+    visit_id UUID REFERENCES visits(visit_id) ON DELETE SET NULL,
+    reason TEXT NOT NULL,
+    due_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED'
+        CHECK (status IN ('SCHEDULED','REMINDED','ATTENDED','MISSED','CANCELLED')),
+    -- The simulated reminder, in its own columns. Nothing here is a record of
+    -- a message any patient actually received.
+    simulated_message_ref VARCHAR(60),
+    simulated_message_body TEXT,
+    simulated_sent_at TIMESTAMPTZ,
+    created_by_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 16. APPROVAL REQUESTS (maker-checker)
 -- Sensitive actions are proposed by one administrator and must be approved by
 -- a different one. The proposer may never approve their own request, which is
@@ -381,9 +529,16 @@ CREATE INDEX idx_approvals_status ON approval_requests(status);
 CREATE INDEX idx_suppliers_tenant ON suppliers(tenant_id);
 CREATE INDEX idx_po_tenant_status ON purchase_orders(tenant_id, status);
 CREATE INDEX idx_memberships_customer ON scheme_memberships(customer_id);
+CREATE INDEX idx_recalls_due ON patient_recalls(tenant_id, due_date, status);
 CREATE INDEX idx_products_tenant ON products(tenant_id);
 CREATE INDEX idx_products_barcode ON products(tenant_id, barcode);
 CREATE INDEX idx_stock_movements_product ON stock_movements(product_id);
 CREATE INDEX idx_visits_tenant_date ON visits(tenant_id, date);
+CREATE INDEX idx_visits_doctor ON visits(doctor_id, status);
+CREATE INDEX idx_doctors_user ON doctors(user_id);
 CREATE INDEX idx_sales_tenant ON sales(tenant_id);
 CREATE INDEX idx_sales_receipt ON sales(receipt_number);
+CREATE INDEX idx_sales_till_session ON sales(till_session_id);
+CREATE INDEX idx_refresh_family ON refresh_tokens(family_id);
+CREATE INDEX idx_refresh_user ON refresh_tokens(user_id) WHERE revoked_at IS NULL;
+CREATE INDEX idx_till_sessions_tenant ON till_sessions(tenant_id, status, opened_at DESC);
