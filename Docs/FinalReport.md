@@ -65,7 +65,7 @@ discussed in §6.
 
 Six more use cases fully dressed, the remaining features implemented, the test
 suite grown from a handful to 234, the CI pipeline built, and the defect log
-grown to 52 defects and 7 limitations.
+grown to 54 defects and 7 limitations.
 
 Most of the real engineering in this phase was **fixing things that appeared to
 work.** That is discussed in §3, because it is the finding of the project.
