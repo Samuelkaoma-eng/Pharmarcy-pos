@@ -155,7 +155,7 @@ no GitHub App had to be installed.
 
 | | |
 | :--- | :--- |
-| URL | https://pharmacy-pos-production-73c2.up.railway.app |
+| URL | https://g-16-pharmarcypos.up.railway.app |
 | Project | `group-16-pharmacy-pos` |
 | Services | `pharmacy-pos` (the app), `Postgres` (PostgreSQL 18) |
 | Region | `sfo` |
