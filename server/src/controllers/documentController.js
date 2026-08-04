@@ -7,15 +7,9 @@ const db = require('../config/db');
 // static content and never committed.
 const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 
-const REQUIRED_TYPES = [
-  'PACRA_CERTIFICATE',
-  'TPIN_CERTIFICATE',
-  'PHARMACIST_PRACTISING',
-  'PHARMACIST_ID',
-  'PREMISES_PROOF',
-  'PREMISES_FLOOR_PLAN',
-  'ZAMRA_INSPECTION'
-];
+// Held in the service rather than here, because the activation guard enforces
+// the same list and the two must never drift apart.
+const { REQUIRED_TYPES, readinessFor } = require('../services/onboardingReadiness');
 
 // Compliance paperwork is scanned documents and photographs, nothing else.
 // Anything executable must not be accepted, let alone handed back later.
@@ -162,42 +156,14 @@ exports.reviewDocument = async (req, res) => {
   }
 };
 
-// A pharmacy should not be activated while paperwork is outstanding, so the
-// onboarding screen can show readiness before anyone clicks approve.
+// What the onboarding screen shows an operator before they click approve. This
+// is now the same computation the activation guard runs, so the figure shown
+// and the figure enforced cannot disagree.
 exports.getReadiness = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query(
-      `SELECT
-         COUNT(*)::int AS total,
-         COUNT(*) FILTER (WHERE status = 'VERIFIED')::int AS verified,
-         COUNT(*) FILTER (WHERE status = 'REJECTED')::int AS rejected,
-         COUNT(*) FILTER (WHERE status = 'PENDING')::int AS pending
-       FROM onboarding_documents WHERE tenant_id = $1`,
-      [id]
-    );
-
-    const counts = result.rows[0];
-
-    // Readiness is not just "nothing pending". Every document ZAMRA requires
-    // must be present and verified, so a pharmacy cannot be activated by
-    // submitting one certificate and nothing else.
-    const present = await db.query(
-      "SELECT DISTINCT document_type FROM onboarding_documents WHERE tenant_id = $1 AND status = 'VERIFIED'",
-      [id]
-    );
-    const verifiedTypes = present.rows.map((r) => r.document_type);
-    const missing = REQUIRED_TYPES.filter((t) => !verifiedTypes.includes(t));
-
-    res.json({
-      message: 'Readiness retrieved',
-      data: {
-        ...counts,
-        required: REQUIRED_TYPES.length,
-        missing,
-        ready_to_activate: missing.length === 0 && counts.pending === 0 && counts.rejected === 0
-      }
-    });
+    const data = await readinessFor(id);
+    res.json({ message: 'Readiness retrieved', data });
   } catch (error) {
     console.error('Document controller error:', error.message);
     res.status(500).json({ error: 'Server error' });

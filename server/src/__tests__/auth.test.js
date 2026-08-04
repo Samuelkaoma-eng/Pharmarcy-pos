@@ -103,4 +103,44 @@ describe('Authentication and ControlHub access control', () => {
     const res = await request(app).get('/api/does-not-exist');
     expect(res.statusCode).toEqual(401);
   });
+
+  // The signing key has a fallback so a fresh checkout runs, and that fallback
+  // is committed here — anyone reading the repository could forge a token for
+  // any role with it. Production must refuse to start rather than sign with it.
+  //
+  // Checked in a child process because the refusal happens when the module is
+  // loaded, and this suite already has it loaded under NODE_ENV=test.
+  describe('the committed signing fallback is refused in production', () => {
+    const { execFileSync } = require('child_process');
+    const path = require('path');
+    const serverRoot = path.join(__dirname, '../..');
+
+    const loadAuthWith = (env) =>
+      execFileSync(process.execPath, ['-e', "require('./src/middleware/auth')"], {
+        cwd: serverRoot,
+        env: { ...process.env, ...env },
+        stdio: 'pipe'
+      });
+
+    it('refuses to start in production with no JWT_SECRET set', () => {
+      let message = '';
+      try {
+        loadAuthWith({ NODE_ENV: 'production', JWT_SECRET: '' });
+        throw new Error('it started, which means it signed with the public fallback');
+      } catch (err) {
+        message = String(err.stderr || err.message);
+      }
+      expect(message).toMatch(/JWT_SECRET must be set in production/);
+    });
+
+    it('starts in production once a real JWT_SECRET is supplied', () => {
+      expect(() =>
+        loadAuthWith({ NODE_ENV: 'production', JWT_SECRET: 'a-real-secret-value' })
+      ).not.toThrow();
+    });
+
+    it('still runs on the fallback outside production, so a fresh checkout works', () => {
+      expect(() => loadAuthWith({ NODE_ENV: 'development', JWT_SECRET: '' })).not.toThrow();
+    });
+  });
 });

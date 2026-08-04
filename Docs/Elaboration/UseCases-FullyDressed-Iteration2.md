@@ -412,7 +412,7 @@ visit and to the person who took them.
 | UC-07 Verify Prescription | `prescriptionController.verifyPrescription` | `prescription` | `Prescriptions.jsx` |
 | UC-08 Manage Staff and Roles | `userController` | `usersAndDocuments` | `Staff.jsx` |
 | UC-09 Manage Product Catalogue | `productController` | `inventory`, `tenantIsolation` | `Inventory.jsx` |
-| UC-10 Apply Insurance Cover | `insuranceController`, `saleController` | `complianceAndTrade` | `Insurance.jsx` (enrolment only) |
+| UC-10 Apply Insurance Cover | `insuranceController`, `saleController` | `complianceAndTrade`, `pagesRender` | `Insurance.jsx`, `POSCheckout.jsx` |
 | UC-11 Triage Patient Visit | `triageController` | `triageWorkflow` | `TriageQueue.jsx` |
 
 When this document was first written, triage had no test suite of its own and
@@ -424,12 +424,14 @@ The first has since been closed: `triageWorkflow.test.js` now holds 20 tests
 covering reception, vitals, assignment, the consultation hand-off, the refusal
 to skip a stage, tenant isolation, and the sale that closes the loop.
 
-The second is only half closed, and the table above says so. Scheme
-administration and patient enrolment have a screen; **applying cover to a basket
-at the till does not.** `POSCheckout.jsx` makes no reference to insurance, so
-the split-billing path proven by `complianceAndTrade` is reachable through the
-API and not through the interface. That remains the honest gap in this use case,
-and it is carried as usability risk U7 in the beta test report.
+The second has since been closed too. `POSCheckout.jsx` once made no reference
+to insurance at all, so the split-billing path proven by `complianceAndTrade` was
+reachable through the API and not through the interface. The till now carries a
+patient selector, resolves cover as soon as a patient is chosen, and shows the
+scheme, its rate and the split before payment is taken — and reports that cover
+*could not be checked* if the lookup fails, rather than billing in full as though
+it had checked. Verified against the live deployment: a K50.00 basket for a
+patient on 80% cover records K40.00 to the scheme and K10.00 to the patient.
 
 ## Defects this document surfaced
 

@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
+const readiness = require('../services/onboardingReadiness');
 
 const TENANT_STATUSES = ['REGISTERED', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'ACTIVE', 'REJECTED'];
 
@@ -43,6 +44,16 @@ exports.updateTenantStatus = async (req, res) => {
 
     if (!TENANT_STATUSES.includes(status)) {
       return res.status(400).json({ error: `Status must be one of: ${TENANT_STATUSES.join(', ')}` });
+    }
+
+    // Activation is the moment a pharmacy becomes able to dispense: it appears
+    // in the sign-in directory and its staff can trade. It is refused while any
+    // required document is unverified, rejected or still awaiting review.
+    // Readiness used to be reported to the operator and enforced nowhere, so a
+    // pharmacy could be activated with no paperwork at all (DEF-055).
+    if (status === 'ACTIVE') {
+      const blocked = await readiness.blockingReason(id);
+      if (blocked) return res.status(400).json({ error: blocked });
     }
 
     const result = await db.query('UPDATE tenants SET status = $1 WHERE tenant_id = $2 RETURNING *', [status, id]);

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const readiness = require('../services/onboardingReadiness');
 
 // Maker-checker. Sensitive platform actions are proposed by one administrator
 // and carried out only once a different one approves. The rule that matters is
@@ -15,6 +16,10 @@ const ACTIONS = {
   },
   ACTIVATE_TENANT: {
     label: 'Activate a pharmacy',
+    // Approval by a second operator is not a substitute for the paperwork. The
+    // guard runs on the same transaction client as the change it would permit,
+    // so the documents cannot be altered between the check and the update.
+    guard: (client, payload) => readiness.blockingReason(payload.tenant_id, client),
     apply: (client, payload) =>
       client.query('UPDATE tenants SET status = $1 WHERE tenant_id = $2', ['ACTIVE', payload.tenant_id])
   },
@@ -130,7 +135,20 @@ exports.decide = async (req, res) => {
       }
 
       if (decision === 'APPROVED') {
-        await ACTIONS[request.action].apply(client, request.payload);
+        const action = ACTIONS[request.action];
+
+        // An action may refuse to be applied even once approved. A refusal is
+        // the caller's answer, not a fault, so it rolls back and reports why
+        // rather than surfacing as a server error.
+        if (action.guard) {
+          const blocked = await action.guard(client, request.payload);
+          if (blocked) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: blocked });
+          }
+        }
+
+        await action.apply(client, request.payload);
       }
 
       const updated = await client.query(

@@ -26,7 +26,7 @@ What this document therefore contains is:
 | Section | Status |
 | :--- | :--- |
 | §2 Beta test plan | **A plan. Not yet executed.** Written to be run, not run. |
-| §3 Automated verification | **Real.** 234 tests, executed 4 August 2026, output quoted. |
+| §3 Automated verification | **Real.** 241 server tests and 8 client tests, executed 4 August 2026, output quoted. |
 | §4 Developer walkthroughs | **Real.** Performed against a running system on the dates given. |
 | §5 Defects found by testing | **Real.** Traced to `DEFECT_LOG.md` entries. |
 | §6 Usability risks | **Assessed, not observed.** Reasoned from the interface, not from users. |
@@ -98,9 +98,9 @@ Result on 4 August 2026:
 
 ```
 Test Suites: 20 passed, 20 total
-Tests:       234 passed, 234 total
+Tests:       241 passed, 241 total
 Snapshots:   0 total
-Time:        53.422 s
+Time:        34.079 s
 Ran all test suites.
 ```
 
@@ -114,12 +114,12 @@ Ran all test suites.
 | `tillSession.test.js` | **15** | Float, drawer reconciliation, cash-only rule, variance, shift binding |
 | `usersAndDocuments.test.js` | 15 | Staff roles, document upload, review, onboarding readiness |
 | `reporting.test.js` | 12 | VAT summary, trading summary, stock valuation, dispensing register |
-| `onboarding.test.js` | 12 | Pharmacy registration and the status gate on sign-in |
+| `onboarding.test.js` | 14 | Pharmacy registration and the status gate on sign-in |
 | `refreshRotation.test.js` | 11 | Token rotation, replay detection, family revocation |
 | `prescription.test.js` | 11 | Verification, lapse, dispense transitions |
-| `auth.test.js` | 11 | Ambiguous usernames, bad credentials, inactive pharmacy |
+| `auth.test.js` | 14 | Ambiguous usernames, bad credentials, inactive pharmacy |
 | `patientRecall.test.js` | 10 | Recall list, simulated reminders, refusal with no phone number |
-| `makerChecker.test.js` | 10 | Self-approval refused, row lock, no double-apply |
+| `makerChecker.test.js` | 12 | Self-approval refused, row lock, no double-apply |
 | `tenantSettings.test.js` | 10 | Platform-owned settings, pharmacy-owned branding |
 | `auditTrail.test.js` | 9 | Before and after values on price, VAT, stock, prescription, till and role changes |
 | `expiryGuard.test.js` | 8 | Expired batch, all-batches-expired, insufficient stock, full rollback |
@@ -128,7 +128,7 @@ Ran all test suites.
 | `sale.test.js` | 7 | Pricing from the database, receipt, prescription requirement |
 | `inventory.test.js` | 6 | Receive, dispense, adjust, movement records |
 | `tenantIsolation.test.js` | 5 | One pharmacy cannot read or sell another's stock |
-| **Total** | **234** | |
+| **Total** | **241** | |
 
 ### 3.2 The discipline these were written under
 
@@ -244,7 +244,7 @@ Reasoned from the interface. Each would be confirmed or dismissed by §2.
 | U4 | The triage queue is one long list, not lanes per stage | Rebuilt and working, but a busy clinic with thirty visits scrolls. Stage counts are shown across the top; whether that is enough is exactly a §2 question. |
 | U5 | Clinical insight and patient recall have no interface at all | Endpoints and tests exist; nothing calls them. A user cannot reach either. |
 | U6 | SIMFIS marking may still be mistaken for a real fiscal receipt | Mitigated by the prefix, the notice, the hatched block and the QR content printed as text — but only observation of a real user would settle it. |
-| U7 | Insurance cover cannot be applied at the till | Schemes and enrolment have a screen; `POSCheckout.jsx` makes no reference to insurance. The split-billing path is proven by `complianceAndTrade` and reachable through the API, but a cashier cannot invoke it. A member is billed in full at the counter. |
+| U7 | ~~Insurance cover cannot be applied at the till~~ **Closed.** | The till now carries a patient selector, looks the cover up as soon as one is chosen, and shows the scheme, its rate and the split before payment is taken. A failed lookup says cover *could not be checked* rather than billing in full as though it had checked. Verified against a live deployment: a K50.00 basket for a patient on 80% cover records K40.00 to the scheme and K10.00 to the patient. |
 
 U5 is recorded honestly as incomplete rather than presented as a design
 decision.
@@ -255,7 +255,7 @@ decision.
 
 1. **No external users.** The central limitation. Everything about usability in this document is inference.
 2. **The walkthroughs were run by the authors.** We knew where every control was and what every message meant. This is the weakest possible position from which to judge whether an interface is learnable.
-3. **The automated suite tests the server, not the interface.** There are no component or end-to-end UI tests. DEF-038 and DEF-043 are what that gap costs.
+3. **The interface is now tested, but only at component level.** `pagesRender.test.jsx` renders the real pages against a mocked API, and reintroducing DEF-038 makes it fail while the production build still passes — which is the gap it was written to close. There are still no end-to-end tests driving a real browser against a real server, so a defect in the wiring *between* the two would still not be caught.
 4. **One database, one seed.** All testing used the same seeded dataset on one PostgreSQL instance on one Windows machine. No concurrency testing beyond the row locks asserted in `makerChecker.test.js` and `tillSession.test.js`; no load testing; no testing on the hardware or connectivity a Zambian pharmacy would actually have.
 5. **The suite runs `--runInBand`.** Suites are serial, so genuine concurrent-use defects would not surface.
 6. **Simulated subsystems are tested as simulations.** `fiscalSimulation.test.js` proves SIMFIS marks its output and never writes a real fiscal field. It proves nothing about a real ZRA integration, because there is not one.
@@ -265,7 +265,7 @@ decision.
 ## 8. Conclusion
 
 The system is **verified but not validated**. There is strong, reproducible
-evidence that it does what its developers intended — 234 automated tests, each
+evidence that it does what its developers intended — 241 automated tests, each
 guard proven to fail without its fix, and defects found and closed with tests
 that hold them closed. There is no evidence at all that it does what a
 pharmacist needs, because no pharmacist has used it.

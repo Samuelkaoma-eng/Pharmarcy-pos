@@ -5,7 +5,7 @@ Project: Group 16 Pharmacy POS
 
 > **This is a dated snapshot, kept as a record of where the project stood on 3
 > August 2026. Its figures were correct then and are not maintained.** The test
-> suite has since grown from 50 cases across 7 suites to 234 across 20, and the
+> suite has since grown from 50 cases across 7 suites to 241 across 20, and the
 > gaps identified below under Elaboration 2, Transition and Demo/final have been
 > filled. For the current position see `FinalReport.md`, and for the current
 > suite see `Transition/BetaTestReport.md` §3.

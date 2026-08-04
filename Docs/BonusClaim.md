@@ -80,7 +80,7 @@ under scrutiny is evidence the team understands what the patterns mean.
 
 | Job | What it does |
 | :--- | :--- |
-| `test` | Builds client and server, provisions PostgreSQL, applies the real schema and seed, runs all 234 tests |
+| `test` | Builds client and server, provisions PostgreSQL, applies the real schema and seed, runs all 241 server tests and the client component tests |
 | `dependency-audit` | `npm audit`, failing the build on high severity, for both workspaces |
 | `secret-scan` | gitleaks over **full history**, not just the diff |
 | `codeql` | Static analysis for JavaScript |

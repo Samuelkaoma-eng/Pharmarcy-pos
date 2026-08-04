@@ -393,7 +393,7 @@ carry the supplier, and the order's status reflects what remains outstanding.
 | UC-04 Decide Approval | `approvalController.decide` | `makerChecker` |
 | UC-05 Receive Stock | `supplierController.receiveAgainstOrder` | `complianceAndTrade` |
 
-**234 tests across 20 suites.** Every extension above marked with a test file is
+**241 tests across 20 suites.** Every extension above marked with a test file is
 asserted, not merely described.
 
 ---

@@ -224,7 +224,7 @@ degrade to *unknown*, never to *fine*.
 
 ## 4. The executable spike, and what it proves
 
-The proof of concept is the running system, exercised by 234 automated tests
+The proof of concept is the running system, exercised by 241 automated tests
 across 20 suites. Each architectural factor is tied below to the test that
 demonstrates it, so the claim can be checked rather than believed.
 
@@ -240,7 +240,7 @@ demonstrates it, so the claim can be checked rather than believed.
 
 ### The CI pipeline as part of the architecture
 
-`.github/workflows/ci.yml` stands up PostgreSQL 15 as a service container, installs
+`.github/workflows/ci.yml` stands up PostgreSQL 18 as a service container, installs
 both workspaces, lints the server, builds the client, applies schema and seed via
 `db:reset`, and runs the suite.
 

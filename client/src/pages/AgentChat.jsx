@@ -23,7 +23,10 @@ export default function AgentChat() {
         setMessages(prev => [...prev, { sender: 'bot', text: `${res.data.response}${action}${confirmation}` }]);
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      // Falls through to the message below, which tells the user the service
+      // could not be reached rather than inventing an answer.
+    }
 
     setMessages(prev => [...prev, { sender: 'bot', text: `I could not reach the pharmacy service for "${query}". Try again once the backend connection is available.` }]);
   };

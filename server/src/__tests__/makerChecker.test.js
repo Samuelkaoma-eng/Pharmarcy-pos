@@ -121,4 +121,59 @@ describe('Maker-checker approvals', () => {
 
     expect(res.statusCode).toEqual(403);
   });
+
+  // A second operator agreeing is not a substitute for the paperwork. Approval
+  // and compliance are separate gates, and passing one does not pass the other.
+  describe('approval does not override the compliance gate', () => {
+    let unpaperedTenantId;
+    let activationRequestId;
+
+    beforeAll(async () => {
+      const created = await pool.query(
+        `INSERT INTO tenants (name, owner_email, phone, status)
+         VALUES ($1, $2, $3, 'UNDER_REVIEW') RETURNING tenant_id`,
+        [`Unpapered Pharmacy ${Date.now()}`, 'owner@unpapered.zm', '+260970002222']
+      );
+      unpaperedTenantId = created.rows[0].tenant_id;
+    });
+
+    afterAll(async () => {
+      await pool.query('DELETE FROM tenants WHERE tenant_id = $1', [unpaperedTenantId]);
+    });
+
+    it('refuses to apply an approved activation when documents are outstanding', async () => {
+      const raised = await request(app)
+        .post('/api/controlhub/approvals')
+        .set('Authorization', `Bearer ${makerToken}`)
+        .send({
+          action: 'ACTIVATE_TENANT',
+          payload: { tenant_id: unpaperedTenantId },
+          reason: 'Owner says the paperwork is coming'
+        });
+
+      expect(raised.statusCode).toEqual(201);
+      activationRequestId = raised.body.data.request_id;
+
+      const decided = await request(app)
+        .patch(`/api/controlhub/approvals/${activationRequestId}/decide`)
+        .set('Authorization', `Bearer ${checkerToken}`)
+        .send({ decision: 'APPROVED' });
+
+      expect(decided.statusCode).toEqual(400);
+      expect(decided.body.error).toMatch(/required documents are not verified/i);
+    });
+
+    it('leaves the pharmacy unactivated and the request still open', async () => {
+      // The refusal rolls back, so neither the tenant nor the request moved.
+      const tenant = await pool.query('SELECT status FROM tenants WHERE tenant_id = $1', [
+        unpaperedTenantId
+      ]);
+      expect(tenant.rows[0].status).toEqual('UNDER_REVIEW');
+
+      const req = await pool.query('SELECT status FROM approval_requests WHERE request_id = $1', [
+        activationRequestId
+      ]);
+      expect(req.rows[0].status).toEqual('PENDING');
+    });
+  });
 });

@@ -249,7 +249,7 @@ change.
 
 | Question | Answer |
 | :--- | :--- |
-| "How many tests?" | 234 across 20 suites. Every guard has been verified by removing the fix and confirming the test fails — 8 of the 15 till tests fail without theirs. |
+| "How many tests?" | 241 server tests across 20 suites, plus 8 client component tests. Every guard has been verified by removing the fix and confirming the test fails — 8 of the 15 till tests fail without theirs. |
 | "Is it secure?" | Six-job CI: build and test, dependency audit, gitleaks over full history, CodeQL, SBOM, and project-specific invariants. The audit job found a real high-severity Vite advisory on its first run (DEF-042). |
 | "Biggest weakness?" | Tenant isolation is enforced by convention — every query is scoped because it was written that way. PostgreSQL row-level security is the structural fix and it isn't done. |
 | "Has anyone used it?" | No. It's verified, not validated. The beta test plan is written and unexecuted, and our beta report says so on its first page. |
