@@ -269,18 +269,33 @@ const verifyRlsEnforced = async () => {
 
   // No tenant is set on this connection, so a scoped table must answer with
   // nothing whatever it holds.
-  const leak = await pool.query('SELECT COUNT(*)::int AS n FROM customers');
+  //
+  // This can legitimately fail, and only in one way: on a database that already
+  // has its tables but has never had these policies installed, the application
+  // role has not been granted anything yet, so the probe is refused outright.
+  // That is a state to repair, not a fault to crash on — and it is exactly the
+  // state the deployed database was in the first time this shipped. A refusal
+  // is never treated as a pass: `enforced` stays false and the caller installs.
+  let rowsVisibleWithoutATenant = null;
+  let probeRefused = null;
+  try {
+    const leak = await pool.query('SELECT COUNT(*)::int AS n FROM customers');
+    rowsVisibleWithoutATenant = leak.rows[0].n;
+  } catch (err) {
+    probeRefused = err.message;
+  }
 
   return {
     roleIsSuperuser: Boolean(rolsuper),
     roleBypassesRls: Boolean(rolbypassrls),
     tablesWithoutRls: unprotected.rows.map((r) => r.relname),
-    rowsVisibleWithoutATenant: leak.rows[0].n,
+    rowsVisibleWithoutATenant,
+    probeRefused,
     enforced:
       !rolsuper &&
       !rolbypassrls &&
       unprotected.rows.length === 0 &&
-      leak.rows[0].n === 0
+      rowsVisibleWithoutATenant === 0
   };
 };
 
@@ -314,11 +329,25 @@ const initDb = async () => {
   }
 
   try {
+    // pg_class, NOT information_schema.tables.
+    //
+    // information_schema is privilege-filtered: it shows a role only the tables
+    // it holds some privilege on. The application role is granted its privileges
+    // by rls_policies.sql, so on the boot that first installs those policies it
+    // has none yet — and information_schema would answer, truthfully and
+    // uselessly, that there are no tables. The next line of this function
+    // applies schema_postgres.sql, which opens with DROP TABLE ... CASCADE.
+    //
+    // That is not a hypothetical. It emptied a seeded database on the first
+    // production-mode boot of this change, and it would have done the same to
+    // the deployed one. pg_class is the catalog itself and is readable
+    // regardless of privilege, so it answers what is actually there.
     const tableCheck = await pool.query(`
       SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'tenants'
-      );
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname = 'tenants'
+      ) AS exists;
     `);
 
     const tablesExist = tableCheck.rows[0].exists;
@@ -385,7 +414,8 @@ const initDb = async () => {
         rls.roleBypassesRls && 'the connecting role holds BYPASSRLS',
         rls.tablesWithoutRls.length && `these tables have no policy: ${rls.tablesWithoutRls.join(', ')}`,
         rls.rowsVisibleWithoutATenant > 0 &&
-          `a connection with no tenant set can still read ${rls.rowsVisibleWithoutATenant} patient rows`
+          `a connection with no tenant set can still read ${rls.rowsVisibleWithoutATenant} patient rows`,
+        rls.probeRefused && `the check itself could not run: ${rls.probeRefused}`
       ]
         .filter(Boolean)
         .join('; ');
