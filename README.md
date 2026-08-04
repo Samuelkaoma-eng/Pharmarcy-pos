@@ -52,9 +52,17 @@ npm run install:all
 cp server/.env.example server/.env
 ```
 
-Open `server/.env` and set the five `DB_*` values to match your PostgreSQL. That
-is the only block you must fill in to run locally. Everything else has a working
+Open `server/.env` and set the `DB_*` values to match your PostgreSQL. That is
+the only block you must fill in to run locally. Everything else has a working
 default, and the file explains each one.
+
+Note that there are **two** database identities, and they are not
+interchangeable. `DB_ADMIN_USER` owns the schema and is used only to create,
+seed and migrate. `DB_USER` is what the server runs as, and it is deliberately
+not a superuser: tenant isolation is enforced by PostgreSQL row-level security,
+and a superuser bypasses every policy without a word. `npm run db:reset` creates
+that role for you. If you point `DB_USER` back at `postgres`, the server says so
+at boot and refuses to start in production.
 
 `server/.env` is git-ignored. Never commit it.
 
@@ -65,7 +73,8 @@ npm run db:reset
 ```
 
 This drops and rebuilds everything from `Docs/Elaboration/schema_postgres.sql`
-and `seed_data.sql`, which are the single source of truth for the database.
+and `seed_data.sql`, which are the single source of truth for the database, then
+provisions the application role and installs `rls_policies.sql` on top.
 Re-run it any time the data gets into a state you do not want — including after
 running the test suite, which mutates stock levels.
 
@@ -130,6 +139,7 @@ npm run lint
 | `client/src/api/client.js` | Single interface over every server call. |
 | `Docs/` | Use cases, domain model, diagrams, risk list, reports. |
 | `Docs/Elaboration/schema_postgres.sql` | The database. Edit here, not in a migration. |
+| `Docs/Elaboration/rls_policies.sql` | Row-level security. A new table without a policy fails the migration. |
 | `DEFECT_LOG.md` | Every defect found, with the test that holds each fix closed. |
 
 ---
@@ -147,6 +157,13 @@ npm run lint
 4. **ZRA fiscal references are recorded, never generated.** This system is not an
    approved invoicing provider. The SIMFIS simulation is marked as simulated
    everywhere it appears and writes to its own columns.
+5. **One pharmacy cannot read another's records, and it is not your job to
+   remember that.** PostgreSQL row-level security scopes every query by the
+   tenant on the connection, so a query that forgets `WHERE tenant_id = $1`
+   returns nothing rather than everything. Use `db.query` and `db.connect`; both
+   carry the request's tenant. Reaching for `db.pool` in a controller escapes the
+   scope and fails CI. A new table added to the schema without a policy fails the
+   migration.
 
 ---
 
