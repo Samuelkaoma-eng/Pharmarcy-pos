@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
 
 describe('Two-tier customisation: ControlHub settings and tenant branding', () => {
@@ -18,7 +18,7 @@ describe('Two-tier customisation: ControlHub settings and tenant branding', () =
   afterAll(async () => {
     // Restore the seeded window so other suites are unaffected.
     await pool.query('UPDATE tenants SET expiry_alert_days = 90 WHERE tenant_id = $1', [SEED.centralTenantId]);
-    await pool.end();
+    await closeAll();
   });
 
   it('lets the ControlHub read a pharmacy operational settings', async () => {

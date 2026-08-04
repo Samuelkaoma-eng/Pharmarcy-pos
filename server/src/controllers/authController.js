@@ -43,9 +43,16 @@ exports.login = async (req, res) => {
     // Usernames are only unique per tenant, so an unscoped lookup could match
     // several tenants. Scope when the caller names a tenant, otherwise require
     // one as soon as the username is ambiguous.
-    const result = tenantId
-      ? await db.query('SELECT * FROM users WHERE username = $1 AND tenant_id = $2', [username, tenantId])
-      : await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    //
+    // This is one of the few reads that genuinely cannot be tenant-scoped: it
+    // is what establishes the tenant. Row-level security would otherwise return
+    // nothing here, so the lookup is made inside the declared auth window,
+    // which reaches the identity tables and nothing else.
+    const result = await db.withAuthLookup(() =>
+      tenantId
+        ? db.query('SELECT * FROM users WHERE username = $1 AND tenant_id = $2', [username, tenantId])
+        : db.query('SELECT * FROM users WHERE username = $1', [username])
+    );
 
     if (result.rows.length > 1) {
       return res.status(400).json({ error: 'Username exists in multiple pharmacies. Please supply tenantId.' });
@@ -65,7 +72,9 @@ exports.login = async (req, res) => {
 
     // A pharmacy that has registered but not yet been approved must not be able
     // to trade, so its staff cannot sign in until the ControlHub activates it.
-    const tenantRes = await db.query('SELECT status, name FROM tenants WHERE tenant_id = $1', [user.tenant_id]);
+    const tenantRes = await db.withAuthLookup(() =>
+      db.query('SELECT status, name FROM tenants WHERE tenant_id = $1', [user.tenant_id])
+    );
     const tenant = tenantRes.rows[0];
 
     if (!tenant || tenant.status !== 'ACTIVE') {
@@ -118,7 +127,9 @@ exports.controlHubLogin = async (req, res) => {
     // ControlHub is platform-wide, so only a real SuperAdmin may enter. A tenant
     // Admin must never be promoted here: that would hand one pharmacy's
     // administrator authority over every other tenant on the platform.
-    const result = await db.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'SuperAdmin']);
+    const result = await db.withAuthLookup(() =>
+      db.query('SELECT * FROM users WHERE username = $1 AND role = $2', [username, 'SuperAdmin'])
+    );
     const user = result.rows[0];
 
     if (!user) {

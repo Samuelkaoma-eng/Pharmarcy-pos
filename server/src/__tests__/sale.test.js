@@ -1,12 +1,12 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 
 describe('Pharmacy POS Backend Automated Test Suite', () => {
   let authToken;
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('GET /api/health should return ok status with database connectivity', async () => {

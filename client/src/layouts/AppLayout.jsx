@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, ShoppingCart, Package, Users, UsersRound, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search, Truck, HeartHandshake, Wallet, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, UsersRound, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search, Truck, HeartHandshake, Wallet, FileSpreadsheet, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Toaster } from 'sonner';
 import AIChatSidebar from '../components/AIChatSidebar';
@@ -13,6 +13,21 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  // Below 900px the sidebar is a drawer rather than a column. It is closed on
+  // every navigation because on a phone the drawer covers the page you have
+  // just asked for, and leaving it open would hide the answer.
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -40,10 +55,26 @@ export default function AppLayout() {
     <div className="pos-layout">
       <Toaster position="top-right" theme="dark" richColors />
 
-      <aside className="sidebar">
+      {/* Only ever visible below 900px, where the sidebar is off-canvas. It
+          closes the drawer by tapping away from it, which is the gesture a
+          phone user reaches for first. */}
+      <div
+        className={`nav-scrim ${navOpen ? 'is-open' : ''}`}
+        onClick={() => setNavOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={`sidebar ${navOpen ? 'is-open' : ''}`}>
         <div className="sidebar-header">
           <h2>PharmaPOS</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Staff'}</span>
+          <button
+            className="nav-close"
+            onClick={() => setNavOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item) => {
@@ -69,7 +100,15 @@ export default function AppLayout() {
 
       <div className="main-content">
         <header className="top-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+            <button
+              className="nav-toggle"
+              onClick={() => setNavOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={navOpen}
+            >
+              <Menu size={20} />
+            </button>
             <div className="pharmacy-name">{pharmacyName}</div>
             <button
               onClick={() => setCmdOpen(true)}

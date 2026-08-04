@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED } = require('./helpers/login');
 
 // The refresh token was a stateless JWT valid for seven days. Nothing could
@@ -33,7 +33,7 @@ const refreshWith = (cookie) =>
 describe('Refresh token rotation', () => {
   afterAll(async () => {
     await pool.query('DELETE FROM refresh_tokens');
-    await pool.end();
+    await closeAll();
   });
 
   it('issues the refresh token as an HttpOnly cookie, never in the body', async () => {

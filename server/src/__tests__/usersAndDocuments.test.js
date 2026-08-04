@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
 
 const REVIEW_TENANT = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
@@ -8,7 +8,7 @@ const REVIEW_TENANT = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 // Both suites below share one pool, so it is closed once at file scope rather
 // than by whichever suite finishes first.
 afterAll(async () => {
-  await pool.end();
+  await closeAll();
 });
 
 describe('Staff and role management', () => {

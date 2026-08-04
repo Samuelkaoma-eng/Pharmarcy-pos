@@ -75,7 +75,7 @@ export default function SalesHistory() {
         </div>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="table-card">
         <table className="cart-table">
           <thead>
             <tr>

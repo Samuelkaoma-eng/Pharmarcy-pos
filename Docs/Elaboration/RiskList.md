@@ -23,7 +23,7 @@ one was retired quickly, and one turned out to be the wrong shape.
 | ID | Risk as stated at Inception | Type | Then | Now | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **R-01** | Incorrect architecture choice | Technical | 3×4 = 12 | 1×4 = 4 | **Retired** |
-| **R-02** | Database design flaws | Technical | 3×4 = 12 | 2×5 = 10 | **Reduced, not retired** |
+| **R-02** | Database design flaws | Technical | 3×4 = 12 | 1×5 = 5 | **Reduced** |
 | **R-03** | Time mismanagement | Schedule | 4×3 = 12 | 3×3 = 9 | **Active** |
 | **R-04** | Data inconsistency | Technical | 3×5 = 15 | 1×5 = 5 | **Retired** |
 
@@ -55,12 +55,18 @@ have been expensive later:
 - Stock was a single count with no ledger, so a recall could not be traced.
 - `payment_type` accepted `'insurance'` with no scheme, membership or split behind it (DEF-032).
 
-All four are fixed. The risk is not retired because impact is 5 and one
-structural weakness stands: **tenant isolation is enforced by every query being
-written with a `tenant_id` scope, not by the database.** Nothing stops a new
-query omitting it. The fix is PostgreSQL row-level security. Until then this
-risk stays open at exposure 10, and it is the highest remaining technical
-exposure in the project.
+All four are fixed, and so is the structural weakness that kept this risk open
+longest: **tenant isolation used to be enforced by every query being written with
+a `tenant_id` scope, rather than by the database.** Nothing stopped a new query
+omitting it. Row-level security now does — see R-10 for what was built, what was
+checked, and the one narrow window that remains by design.
+
+Impact stays at 5, because a database design fault is expensive to be wrong about
+at any point, and probability drops to 1: the two design faults that could still
+be introduced quietly — an unscoped query and a table added without a policy —
+are now both caught by the database. `rls_policies.sql` ends by refusing to apply
+if any table in the schema has no policy, so forgetting one is a migration
+failure rather than a silent hole.
 
 ### R-03 · Time mismanagement — active
 
@@ -105,7 +111,7 @@ risks the domain has.
 | **R-07** | Claiming a safety check that did not run | Safety | 5×5 = 25 | 1×5 = 5 | **Retired** |
 | **R-08** | Charging tax the law does not levy | Regulatory / financial | 5×4 = 20 | 1×4 = 4 | **Retired** |
 | **R-09** | Issuing an invalid tax document | Regulatory | 3×5 = 15 | 1×5 = 5 | **Retired by scope** |
-| **R-10** | Cross-tenant data disclosure | Security | 3×5 = 15 | 2×5 = 10 | **Active** |
+| **R-10** | Cross-tenant data disclosure | Security | 3×5 = 15 | 1×5 = 5 | **Retired** |
 | **R-11** | Stock records that cannot be reconciled to cash | Business | 4×4 = 16 | 4×4 = 16 | **Active — highest open** |
 | **R-12** | Untraceable stock in a recall | Regulatory | 4×4 = 16 | 1×4 = 4 | **Retired** |
 | **R-13** | The system reporting success it did not have | Quality / trust | 4×3 = 12 | 2×3 = 6 | **Reduced** |
@@ -188,7 +194,7 @@ scans to nothing invites someone to treat it as real.
 Recorded as LIM-005 rather than as a defect, because it is a scope decision and
 not a fault.
 
-### R-10 · Cross-tenant data disclosure — active
+### R-10 · Cross-tenant data disclosure — retired
 
 Distinct from R-06. R-06 was one path that granted the wrong role; R-10 is the
 standing possibility that any single query forgets its `tenant_id` scope.
@@ -198,33 +204,49 @@ one pharmacy could book stock against another's product (DEF-009); and
 prescription verification returned `200 OK` on another pharmacy's prescription,
 reporting a verification that never happened (DEF-008).
 
-`tenantIsolation.test.js` covers the paths it covers. It cannot cover the query
-nobody has written yet. Probability 2, impact 5, and it stays open until row-level
-security moves the guarantee from discipline to the database.
+`tenantIsolation.test.js` covered the paths it covered. It could not cover the
+query nobody had written yet, which is why this stayed open at 2×5 while every
+individual instance was fixed: the exposure was not any particular query, it was
+the fact that correctness depended on remembering.
 
-**Why it was deferred rather than done, and what doing it requires.** Row-level
-security is the correct answer, but it is not a small change, and two properties
-of this system would make a careless attempt worse than the present convention:
+**Retired by row-level security** (`Docs/Elaboration/rls_policies.sql`, DEF-058).
+The guarantee now sits in PostgreSQL rather than in the discipline of whoever
+writes the next query. Twenty-five tables carry a policy; a connection with no
+tenant set reads nothing at all.
 
-1. **The application connects as `postgres`, a superuser.** Superusers bypass RLS
-   unconditionally — `FORCE ROW LEVEL SECURITY` does not apply to them. Enabling
-   policies without first provisioning a non-superuser application role would
-   produce a schema that looks protected, a suite that stays green, and no
-   enforcement whatever. That is precisely the failure this project refuses
-   elsewhere: a control that cannot run must not report itself as running.
-2. **The pool would carry the tenant between requests.** `SET LOCAL` survives
-   only inside a transaction, and the server issues roughly fifty one-shot
-   `pool.query` calls against arbitrary pooled connections alongside fourteen
-   `pool.connect` transactions. A connection returned to the pool holding a stale
-   `app.tenant_id` is a silent cross-tenant read — invisible, where today's
-   explicit `WHERE tenant_id = $1` is at least legible in the SQL.
+Two properties of this system would have made a careless attempt *worse* than the
+convention it replaced, so both were checked rather than assumed:
 
-The work is therefore: create an application role without `BYPASSRLS`; enable and
-force RLS on the twenty tenant-scoped tables; set the tenant as a session variable
-at connection checkout and clear it on release; and extend `tenantIsolation.test.js`
-to assert that a query with the scope deliberately removed still returns nothing.
-Scheduled after submission, on a branch, because it touches every read path in the
-server and the present convention is tested and holding.
+1. **A superuser bypasses RLS unconditionally**, and `FORCE ROW LEVEL SECURITY`
+   does not apply to one. The application connected as `postgres`. Enabling
+   policies without first provisioning a constrained role would have produced a
+   protected-looking schema, a green suite, and no enforcement whatever — a
+   control reporting itself as running when it cannot run. The server now
+   connects as `pharmacy_app`, which holds neither `SUPERUSER` nor `BYPASSRLS`;
+   `rls_policies.sql` refuses to install if it ever does, the server checks it at
+   boot and refuses to start in production if it fails, and a test asserts it.
+2. **A pooled connection can carry the tenant into the next request.**
+   `app.tenant_id` is session state and the server hands connections back to a
+   pool; a connection returned dirty would be a cross-tenant read that nothing in
+   the SQL would reveal. One connection now belongs to one request, carried on
+   `AsyncLocalStorage`, cleared with `DISCARD ALL` on release, and destroyed
+   rather than reused if it cannot be cleared. A test borrows every connection in
+   the pool after a tenant request and asserts each one is blank.
+
+Both were break-tested. Disabling two policies fails five tests; granting the
+role `BYPASSRLS` fails eight; removing the `DISCARD ALL` fails the pool test. In
+each case the five original convention tests kept passing — which is the point,
+and the reason those five were never evidence for this risk.
+
+**What is deliberately still convention.** Three tables — `tenants`, `users` and
+`refresh_tokens` — must be readable before a tenant is known: signing in finds a
+user by a name that is only unique within a pharmacy, refreshing finds a token by
+its hash, and registering creates a pharmacy that has no session yet. They carry
+policies like everything else, plus one extra predicate, `app.auth_lookup`, which
+`config/db.js` opens around exactly those lookups and closes in a `finally`. It
+reaches those three tables and nothing else: a test asserts that inside the
+sign-in window a patient record and a product are still invisible. Probability 1
+rather than 0 because that window exists at all.
 
 ### R-11 · Stock records that cannot be reconciled to cash — active, highest open exposure
 
@@ -314,11 +336,11 @@ substitutes for a second person who has read the code.
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | R-11 | No till session, so cash cannot be reconciled | 16 | Build `TillSession`: float, attachment of every sale, closing count, recorded variance |
 | 2 | R-14 | Mock fallbacks mask a database outage | 12 | Put the fallback behind an explicit demo flag, off by default |
-| 3 | R-02 | Isolation enforced by convention, not the engine | 10 | PostgreSQL row-level security with tenant as a session variable |
-| 3= | R-10 | Cross-tenant disclosure via an unscoped query | 10 | As R-02; extend `tenantIsolation.test.js` to each new route |
-| 5 | R-03 | Documentation running behind the software | 9 | Remaining Transition deliverables are scoped and listed |
-| 5= | R-16 | Knowledge concentrated in one contributor | 9 | Walkthrough of the guards and the platform surface with the group |
-| 7 | R-13 | UI trust | 6 | Hold the rule on every new screen |
+| 3 | R-03 | Documentation running behind the software | 9 | Remaining Transition deliverables are scoped and listed |
+| 3= | R-16 | Knowledge concentrated in one contributor | 9 | Walkthrough of the guards and the platform surface with the group |
+| 5 | R-13 | UI trust | 6 | Hold the rule on every new screen |
+| 6 | R-02 | Database design flaws | 5 | Closed out by row-level security; watch that new tables get a policy — the migration fails if they do not |
+| 6= | R-10 | Cross-tenant disclosure via an unscoped query | 5 | Enforced by the database. Keep the sign-in window (`app.auth_lookup`) to the three identity tables |
 
 Two further items are carried as known limitations rather than risks, because
 each is a stated gap with no uncertainty attached: checkout verifies that a

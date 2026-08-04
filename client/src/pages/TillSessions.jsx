@@ -190,7 +190,7 @@ export default function TillSessions() {
         </div>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="table-card">
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>
             {isSupervisor ? 'All shifts' : 'Your shifts'}

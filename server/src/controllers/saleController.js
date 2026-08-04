@@ -15,7 +15,7 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ error: 'Sale transaction must contain at least one item' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

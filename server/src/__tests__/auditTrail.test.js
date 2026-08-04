@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // stock_movements accounted for stock and approval_requests for platform
@@ -30,7 +30,7 @@ describe('Audit trail', () => {
 
   afterAll(async () => {
     await pool.query('DELETE FROM audit_log WHERE tenant_id = $1', [SEED.centralTenantId]);
-    await pool.end();
+    await closeAll();
   });
 
   it('records a price change with what it was and what it became', async () => {

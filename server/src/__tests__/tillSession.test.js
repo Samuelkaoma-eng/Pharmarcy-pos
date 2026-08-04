@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // LIM-004. A sale used to belong to a cashier but not to a shift, so there was
@@ -46,7 +46,7 @@ describe('Till sessions', () => {
     await pool.query('UPDATE tenants SET require_till_session = FALSE WHERE tenant_id = $1', [
       SEED.centralTenantId
     ]);
-    await pool.end();
+    await closeAll();
   });
 
   it('reports plainly that no till is open, rather than inventing one', async () => {

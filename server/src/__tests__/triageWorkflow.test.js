@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // The clinic flow: reception registers an arrival, triage takes vitals, a
@@ -23,7 +23,7 @@ describe('Triage as a clinic workflow', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   const openVisit = async (reason = 'Automated test visit') => {

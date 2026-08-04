@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require('../config/db');
 
 // The fallback exists so a fresh checkout runs without configuration. It is
 // committed to this repository, which means it is not a secret: anyone who has
@@ -28,23 +29,50 @@ const generateToken = (payload) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 };
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   const token = authHeader.split(' ')[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch {
     // An unreadable token is an ordinary client condition, not a server fault.
     return res.status(401).json({ error: 'Unauthorized, invalid or expired token' });
   }
+
+  req.user = decoded;
+
+  // The tenant goes onto the database connection here, and only here, from a
+  // claim that has just been verified. From this point the row-level security
+  // policies scope every query on this request whether or not the query
+  // remembers to say `WHERE tenant_id = $1`.
+  //
+  // A SuperAdmin is the one identity that reads across pharmacies, because that
+  // is what operating the platform is — approving applications, reviewing
+  // paperwork, suspending a tenant. It is the same claim `controlHubOnly`
+  // gates on, so the policies trust exactly what the routes already trust.
+  try {
+    await db.setTenantScope({
+      tenantId: decoded.tenantId,
+      platformAdmin: decoded.role === 'SuperAdmin'
+    });
+  } catch (err) {
+    // Failing to scope the connection must never fall through to an unscoped
+    // one. Refuse the request instead.
+    console.error('Could not scope the connection to a tenant:', err.message);
+    return res.status(503).json({
+      error: 'DATABASE_UNAVAILABLE',
+      message: 'The database is not reachable, so this request cannot be answered.'
+    });
+  }
+
+  return next();
 };
 
 const requireRole = (...roles) => {

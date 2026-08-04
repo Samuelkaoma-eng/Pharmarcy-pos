@@ -27,7 +27,7 @@ export default function CHDashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="grid-2" style={{ gap: '20px' }}>
         <div style={{ background: 'var(--surface)', padding: '24px', borderRadius: '14px', border: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Pharmacy Tenants</h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '16px' }}>Review active tenant facilities, license verification numbers, and owner contacts.</p>

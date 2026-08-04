@@ -29,7 +29,7 @@ exports.receiveStock = async (req, res) => {
       }
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 
@@ -76,7 +76,7 @@ exports.dispenseStock = async (req, res) => {
       return res.status(404).json({ error: 'Product not found for this pharmacy' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 
@@ -157,7 +157,7 @@ exports.adjustStock = async (req, res) => {
       return res.status(404).json({ error: 'Product not found for this pharmacy' });
     }
 
-    const client = await db.pool.connect();
+    const client = await db.connect();
     try {
       await client.query('BEGIN');
 

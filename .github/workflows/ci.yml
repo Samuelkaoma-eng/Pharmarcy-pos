@@ -67,13 +67,19 @@ jobs:
       # An explicit reset rather than relying on an un-awaited initDb() firing
       # on module import, which made the suite racy against a cold database
       # (DEF-014).
-      - name: Apply Schema and Seed Data
+      # DB_ADMIN_* owns the schema; DB_USER is the role the server runs under.
+      # They must stay different: `postgres` is a superuser and a superuser
+      # bypasses every row-level security policy, so running the suite as one
+      # would leave the tenant isolation tests passing against nothing.
+      - name: Apply Schema, Seed Data and Row-Level Security
         run: npm --prefix server run db:reset
         env:
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: password
+          DB_ADMIN_USER: postgres
+          DB_ADMIN_PASSWORD: password
+          DB_USER: pharmacy_app
+          DB_PASSWORD: ci_app_role_password
           DB_NAME: pharmacy_pos
 
       - name: Run Server Automated Test Suite
@@ -81,8 +87,10 @@ jobs:
         env:
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: password
+          DB_ADMIN_USER: postgres
+          DB_ADMIN_PASSWORD: password
+          DB_USER: pharmacy_app
+          DB_PASSWORD: ci_app_role_password
           DB_NAME: pharmacy_pos
           JWT_SECRET: ci_test_jwt_secret_key_123
 
@@ -235,6 +243,20 @@ jobs:
             exit 1
           fi
           echo "OK: no page invents data when the server cannot be reached."
+
+      # Row-level security scopes a query by the tenant set on the CONNECTION,
+      # and the connection belongs to the request. A controller reaching past
+      # that to the raw pool would get an arbitrary connection carrying an
+      # arbitrary tenant — which is the failure mode RLS was added to remove,
+      # reintroduced somewhere nobody would look for it.
+      - name: No controller bypasses the request's tenant scope
+        run: |
+          if grep -rn "db\.pool\|pool\.query\|pool\.connect" \
+               server/src/controllers server/src/services --include=*.js | grep -q .; then
+            echo "::error::A controller or service is using the raw connection pool. Use db.query or db.connect, which carry the request's tenant (R-10)."
+            exit 1
+          fi
+          echo "OK: every controller query runs on the request's own tenant-scoped connection."
 
       # --exclude-dir matters: without it this walks node_modules and takes
       # minutes, and a check slow enough to be skipped is not a check.
