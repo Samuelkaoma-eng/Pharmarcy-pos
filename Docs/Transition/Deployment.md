@@ -75,15 +75,20 @@ The server already reads `process.env.PORT`, which Railway assigns.
 | Variable | Required | Notes |
 | :--- | :--- | :--- |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Yes | From the Railway PostgreSQL plugin. |
-| `JWT_SECRET` | Yes | Access token signing key. |
-| `REFRESH_SECRET` | Yes | Refresh chain signing key. Must differ from `JWT_SECRET`. |
+| `JWT_SECRET` | **Yes — critical** | Access token signing key. `middleware/auth.js` falls back to a default that is committed to this repository, so a deployment that omits this can have its tokens forged by anyone who has read the source. Set it to a long random value. |
 | `NODE_ENV` | Yes | Set to `production`. It gates the seed described below. |
 | `SEED_DEMO_DATA` | No | Only if demo data is genuinely wanted in that environment. See §5. |
 | `ALLOWED_ORIGINS` | No | Unnecessary in the one-service shape, since the client is same-origin. |
 | `UPLOAD_DIR` | Recommended | Compliance documents are written to disk. A container filesystem is ephemeral, so without a mounted volume uploads are lost on redeploy. See §6. |
 
-Never commit any of these. `server/.env` is git-ignored and the CI pipeline
-fails the build if a key appears in the tree.
+`REFRESH_SECRET` is deliberately absent from this table. The CI workflow sets
+one, but no code reads it: the refresh token is a random 32-byte value stored as
+a SHA-256 hash rather than a signed JWT, so it has no signing key. Setting it
+achieves nothing.
+
+Copy `server/.env.example` to `server/.env` and fill it in. Never commit the result —
+`server/.env` is git-ignored and the CI pipeline fails the build if a key appears
+in the tree.
 
 ---
 
