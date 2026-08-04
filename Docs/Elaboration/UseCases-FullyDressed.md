@@ -393,14 +393,15 @@ carry the supplier, and the order's status reflects what remains outstanding.
 | UC-04 Decide Approval | `approvalController.decide` | `makerChecker` |
 | UC-05 Receive Stock | `supplierController.receiveAgainstOrder` | `complianceAndTrade` |
 
-**128 tests across 12 suites.** Every extension above marked with a test file is
+**234 tests across 20 suites.** Every extension above marked with a test file is
 asserted, not merely described.
 
 ---
 
-## Still to write
+## Continued in Iteration 2
 
-Fully-dressed cases for the remaining Elaboration set: Create Prescription,
-Verify Prescription, Manage Staff and Roles, Manage Product Catalogue, Apply
-Insurance Cover, and Triage Patient Visit. System sequence diagrams for the five
-above are the next deliverable.
+The remaining six cases — Create Prescription, Verify Prescription, Manage Staff
+and Roles, Manage Product Catalogue, Apply Insurance Cover, and Triage Patient
+Visit — were written up in `UseCases-FullyDressed-Iteration2.md`, and the system
+sequence diagrams for the five above in `SystemSequenceDiagrams.md`. Both are
+complete.
