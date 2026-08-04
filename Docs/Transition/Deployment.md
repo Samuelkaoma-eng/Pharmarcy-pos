@@ -125,10 +125,10 @@ Stated rather than discovered later.
 1. **Uploaded documents do not survive a redeploy** unless `UPLOAD_DIR` points at
    a mounted volume. Compliance documents are written to the local filesystem,
    and a container's filesystem is replaced on every deploy.
-2. **CI builds the frontend but does not test it.** The pipeline lints the server
-   and runs the server suite; the client's `lint` script is `vite build`, not
-   ESLint, and there are no component or end-to-end tests. DEF-038 and DEF-043
-   are what that gap has already cost.
+2. **The frontend is now linted and component-tested in CI**, which it was not:
+   the client's `lint` script was `vite build`, and no component tests existed.
+   Both were what DEF-038 and DEF-043 cost. End-to-end tests driving a real
+   browser against a real server still do not exist.
 3. **CI, development and the deployment now all run PostgreSQL 18.** The pipeline
    previously stood up 15 while the deployment ran 18, so it was not testing
    against the version actually in use. That is closed.

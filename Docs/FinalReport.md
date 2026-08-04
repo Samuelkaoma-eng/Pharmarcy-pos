@@ -24,7 +24,7 @@ documents, maker-checker approvals).
 | :--- | :--- |
 | Server | Node.js, Express, PostgreSQL 18, plain SQL through `pg`, no ORM |
 | Client | React 18, Vite 8 (Rolldown), CSS design tokens |
-| Tests | 234 automated tests across 20 suites |
+| Tests | 241 server tests across 20 suites, plus 8 client component tests |
 | Pipeline | 6 jobs: build and test, dependency audit, secret scan, CodeQL, SBOM, project invariants |
 | Source of truth | `Docs/Elaboration/schema_postgres.sql` and `seed_data.sql` |
 
@@ -64,8 +64,8 @@ discussed in §6.
 ### 2.3 Construction (August 2026)
 
 Six more use cases fully dressed, the remaining features implemented, the test
-suite grown from a handful to 234, the CI pipeline built, and the defect log
-grown to 54 defects and 7 limitations.
+suite grown from a handful to 241, the CI pipeline built, and the defect log
+grown to 57 defects and 7 limitations.
 
 Most of the real engineering in this phase was **fixing things that appeared to
 work.** That is discussed in §3, because it is the finding of the project.
@@ -122,7 +122,9 @@ server-side test suite.**
 Only a human opening the page found either.
 
 The cause is structural: the test suite is server-side and API-level, and there
-are no component or end-to-end UI tests. That is an honest gap, and it is
+were no component or end-to-end UI tests at the time. Component tests have
+since been added and demonstrably catch that class of defect; end-to-end tests
+still do not exist. That was an honest gap, and it is
 recorded as one rather than argued away.
 
 ### 3.3 A defect is not closed until a test fails without the fix

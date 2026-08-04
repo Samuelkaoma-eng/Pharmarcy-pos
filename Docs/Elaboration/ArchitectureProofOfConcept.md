@@ -224,7 +224,7 @@ degrade to *unknown*, never to *fine*.
 
 ## 4. The executable spike, and what it proves
 
-The proof of concept is the running system, exercised by 234 automated tests
+The proof of concept is the running system, exercised by 241 automated tests
 across 20 suites. Each architectural factor is tied below to the test that
 demonstrates it, so the claim can be checked rather than believed.
 

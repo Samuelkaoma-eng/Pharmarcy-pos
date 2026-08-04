@@ -27,8 +27,16 @@ export default function POSCheckout() {
   // comes back distinguishes "screened and clear" from "could not be screened",
   // and those two must never be shown the same way.
   const [screen, setScreen] = useState(undefined);
+  // The patient on the sale. Optional — a walk-in buying paracetamol is not a
+  // registered patient — but naming one is what lets the server resolve any
+  // insurance cover, so without this control cover could never be applied.
+  const [customers, setCustomers] = useState([]);
+  const [customerId, setCustomerId] = useState('');
+  // `undefined` means not looked up yet, `null` means looked up and not covered.
+  // The two must not render the same way: one is silence, the other is an answer.
+  const [coverage, setCoverage] = useState(undefined);
 
-  const { 
+  const {
     cart, 
     prescriptionId, 
     paymentType, 
@@ -45,7 +53,34 @@ export default function POSCheckout() {
 
   useEffect(() => {
     loadProducts();
+    loadCustomers();
   }, []);
+
+  // Cover is resolved by the server at checkout from the patient's membership.
+  // This lookup is the same question asked early, so the cashier can tell the
+  // patient what they will pay before taking the money rather than after.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!customerId) {
+      setCoverage(undefined);
+      return () => { cancelled = true; };
+    }
+
+    (async () => {
+      try {
+        const res = await get(`insurance/coverage/${customerId}`);
+        if (!cancelled) setCoverage(res?.data ?? null);
+      } catch (e) {
+        // A failed lookup is not "no cover". Left unknown so the summary says
+        // it could not be checked rather than quietly billing the full amount.
+        if (!cancelled) setCoverage(undefined);
+        toast.error('Could not check insurance cover');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [customerId]);
 
   const loadProducts = async () => {
     try {
@@ -60,6 +95,19 @@ export default function POSCheckout() {
 
     // No invented catalogue. A failed load is reported, not disguised as stock.
     setProducts([]);
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const res = await get('patients');
+      if (res?.data) {
+        setCustomers(res.data);
+        return;
+      }
+    } catch (e) {
+      toast.error('Failed to load patients');
+    }
+    setCustomers([]);
   };
 
   const handleBarcodeScan = (e) => {
@@ -79,6 +127,13 @@ export default function POSCheckout() {
   const vat = getVat();
   const grandTotal = getGrandTotal();
 
+  // Preview of the split the server will perform. Shown so the cashier can say
+  // what the patient owes before taking payment; the recorded figures are the
+  // server's, computed inside the sale transaction.
+  const coverPercent = coverage ? parseFloat(coverage.cover_percent) : 0;
+  const schemeCovers = coverage ? grandTotal * (coverPercent / 100) : 0;
+  const patientPays = grandTotal - schemeCovers;
+
   const handleCompleteSale = async () => {
     if (cart.length === 0) return;
     const hasRx = cart.some(i => i.requires_prescription);
@@ -94,7 +149,11 @@ export default function POSCheckout() {
       post('sales', {
         items: cart.map(i => ({ productId: i.product_id, quantity: i.qty })),
         paymentType,
-        prescriptionId: prescriptionId || null
+        prescriptionId: prescriptionId || null,
+        // The server resolves cover from this and splits the bill. The figures
+        // shown alongside are a preview of that calculation, never the input to
+        // it — the split that is recorded is the one the server computes.
+        customerId: customerId || null
       }),
       {
         loading: 'Processing transaction...',
@@ -106,6 +165,9 @@ export default function POSCheckout() {
             setFiscal(null);
             setShowReceipt(true);
             clearCart();
+            // Cleared with the cart. A patient left selected would attach the
+            // next customer's sale to them, and bill their insurer for it.
+            setCustomerId('');
             return 'Sale completed successfully!';
           }
           throw new Error(res?.error || 'Sale transaction failed');
@@ -304,6 +366,44 @@ export default function POSCheckout() {
             </div>
           )}
 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>
+              Patient (optional — needed for insurance cover):
+            </label>
+            <select
+              className="input-field"
+              style={{ width: '100%' }}
+              value={customerId}
+              onChange={e => setCustomerId(e.target.value)}
+            >
+              <option value="">Walk-in — no patient recorded</option>
+              {customers.map(c => (
+                <option key={c.customer_id} value={c.customer_id}>
+                  {c.name}{c.phone ? ` · ${c.phone}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {/* Three distinct states, deliberately not collapsed into two: no
+                patient chosen, chosen and covered, chosen and not covered. */}
+            {customerId !== '' && coverage === undefined && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: '6px' }}>
+                Cover could not be checked — the full amount will be billed to the patient.
+              </div>
+            )}
+            {customerId !== '' && coverage === null && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: '6px' }}>
+                No active cover on file. The patient pays in full.
+              </div>
+            )}
+            {coverage && (
+              <div style={{ fontSize: '0.78rem', color: '#4ade80', marginTop: '6px' }}>
+                {coverage.name} · covers {coverPercent}%
+                {coverage.member_number ? ` · member ${coverage.member_number}` : ''}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             {['cash', 'card', 'mobile'].map(type => (
               <button 
@@ -332,6 +432,22 @@ export default function POSCheckout() {
                 {currency} <NumberFlow value={grandTotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
               </span>
             </div>
+
+            {/* The total is unchanged by cover. What changes is who pays it. */}
+            {coverage && (
+              <>
+                <div className="summary-row">
+                  <span>{coverage.name} pays ({coverPercent}%):</span>
+                  <span>−{currency} <NumberFlow value={schemeCovers} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} /></span>
+                </div>
+                <div className="summary-row summary-total">
+                  <span>Patient pays:</span>
+                  <span style={{ color: '#4ade80' }}>
+                    {currency} <NumberFlow value={patientPays} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           <button className="btn btn-success" style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '1rem' }} onClick={handleCompleteSale} disabled={cart.length === 0}>

@@ -23,7 +23,9 @@ export default function Settings() {
     try {
       const res = await get('tenants/config');
       if (res?.data) setConfig(res.data);
-    } catch (e) {}
+    } catch (e) {
+      toast.error('Could not load settings', { description: 'Check the backend connection.' });
+    }
   };
 
   const [saving, setSaving] = useState(false);

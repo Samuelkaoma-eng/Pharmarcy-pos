@@ -51,8 +51,18 @@ jobs:
       - name: Lint Server Source
         run: npm --prefix server run lint
 
+      # Real linting, not `vite build`. The build waved through both DEF-038 and
+      # DEF-043, which were undefined-at-runtime bugs.
+      - name: Lint Client Source
+        run: npm --prefix client run lint
+
       - name: Build Frontend Application
         run: npm --prefix client run build
+
+      # Component tests. The server suite is API-level and cannot see a page that
+      # throws on its first row; these render the real pages against a mocked API.
+      - name: Run Client Component Tests
+        run: npm --prefix client test
 
       # An explicit reset rather than relying on an un-awaited initDb() firing
       # on module import, which made the suite racy against a cold database
@@ -211,6 +221,20 @@ jobs:
             exit 1
           fi
           echo "OK: no controller invents data when the database is unreachable."
+
+      # This check only ever looked at the server, which is how a fabricated
+      # patient list and a locally invented "registered" patient survived in
+      # Patients.jsx until DEF-057. The rule is about what a user is shown, so
+      # it has to cover the half of the system that shows it.
+      - name: No invented data in the interface either
+        run: |
+          if grep -rniE "mock ?fallback|const mockNew|// *Mock Data|invented fallback rows? *=" \
+               client/src --include=*.jsx --include=*.js \
+               --exclude-dir=__tests__ | grep -q .; then
+            echo "::error::A page is falling back to invented data. A failed load must report failure, not fabricate rows (LIM-003, DEF-057)."
+            exit 1
+          fi
+          echo "OK: no page invents data when the server cannot be reached."
 
       # --exclude-dir matters: without it this walks node_modules and takes
       # minutes, and a check slow enough to be skipped is not a check.

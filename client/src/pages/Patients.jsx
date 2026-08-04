@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Search, Phone, Mail, FileText, Calendar, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 import { get, post } from '../api/client';
 import Modal from '../components/Modal';
 
@@ -18,35 +19,47 @@ export default function Patients() {
   }, []);
 
   const loadPatients = async () => {
+    // This used to fall back to three invented patients, with invented NRCs and
+    // addresses, whenever the load failed. A patient list is a clinical record:
+    // an outage must look like an outage, not like a roster of people who do
+    // not exist (DEF-057, the client half of LIM-003).
     try {
       const res = await get('patients');
       if (res?.data) {
         setPatients(res.data);
         return;
       }
-    } catch (e) {}
+      toast.error('Could not load patients', { description: res?.error || 'The server did not return a list.' });
+    } catch (e) {
+      toast.error('Could not load patients', { description: 'Check the backend connection.' });
+    }
 
-    // Mock Fallback
-    setPatients([
-      { customer_id: 'c1', name: 'Chipego Mukimba', phone: '+260965111222', email: 'chipego@example.com', nrc: '111222/10/1', gender: 'Female', dob: '1998-05-14', address: 'Plot 45, Olympia Park, Lusaka' },
-      { customer_id: 'c2', name: 'Joshua Kamunda', phone: '+260977333444', email: 'joshua@example.com', nrc: '333444/10/1', gender: 'Male', dob: '1995-11-20', address: 'Plot 12, Roma, Lusaka' },
-      { customer_id: 'c3', name: 'Maximillan Soko', phone: '+260955555666', email: 'max@example.com', nrc: '555666/10/1', gender: 'Male', dob: '1997-03-08', address: 'Kalingalinga, Lusaka' }
-    ]);
+    setPatients([]);
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+
+    // Previously this invented a local patient when the save failed, and then
+    // announced success unconditionally — outside the try, and even when the
+    // server had returned nothing. Staff were told a patient was registered who
+    // had never been written to the database, and could then be selected at the
+    // till. Success is now reported only when the server says so (DEF-057).
+    let created = null;
     try {
       const res = await post('patients', form);
-      if (res?.data) {
-        setPatients(prev => [res.data, ...prev]);
+      created = res?.data || null;
+      if (!created) {
+        toast.error('Patient not registered', { description: res?.error || 'The server did not confirm the record.' });
       }
-    } catch (e) {
-      const mockNew = { customer_id: `c-${Date.now()}`, ...form };
-      setPatients(prev => [mockNew, ...prev]);
+    } catch (err) {
+      toast.error('Patient not registered', { description: 'Check the backend connection and try again.' });
     }
 
-    alert(`✅ Patient '${form.name}' Registered Successfully!`);
+    if (!created) return;
+
+    setPatients(prev => [created, ...prev]);
+    toast.success(`Patient '${created.name}' registered`);
     setShowRegisterModal(false);
     setForm({ name: '', phone: '', email: '', nrc: '', gender: 'Female', dob: '1998-05-14', address: 'Lusaka' });
   };
