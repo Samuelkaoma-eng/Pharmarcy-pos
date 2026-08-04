@@ -1,9 +1,11 @@
 node_modules/
 dist/
 build/
-# Installed from skills-lock.json via `npx skills add`, like node_modules.
 .agents/
-.claude/skills/
+.claude/
+skills-lock.json
+HANDOFF.md
+NEXT-SESSION-PROMPT.md
 .env
 .env.*
 *.log
