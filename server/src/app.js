@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -278,9 +280,36 @@ apiRouter.post('/agent/query', agentController.query);
 
 app.use('/api', apiRouter);
 
+// ---------------------------------------------------------------------------
+// The built client, served from this same origin.
+//
+// Deploying the API and the client as two services would put them on two
+// domains, and the refresh token is an HttpOnly SameSite=Lax cookie: it would
+// stop being sent, and making it SameSite=None would weaken the control that
+// exists to stop a stolen token being replayed. Serving both from one origin
+// keeps the cookie as designed and avoids CORS entirely.
+//
+// Mounted only when a build is actually present, and never under test. In
+// development the client runs on Vite's own port and proxies /api here, so
+// there is no build to serve; the suite asserts the JSON 404 below, which is
+// the API's contract and must not become an HTML page.
+const CLIENT_DIST = path.join(__dirname, '../../client/dist');
+const serveClient = process.env.NODE_ENV !== 'test' && fs.existsSync(path.join(CLIENT_DIST, 'index.html'));
+
+if (serveClient) {
+  app.use(express.static(CLIENT_DIST));
+}
+
 // 404 Handler
+//
+// Anything under /api that reached here is a genuinely missing endpoint and
+// answers as JSON. Everything else is a client-side route, which only the
+// browser can resolve, so the app shell is returned and React Router decides.
 app.use((req, res) => {
-  res.status(404).json({ error: 'NOT_FOUND', message: 'Requested endpoint does not exist' });
+  if (!serveClient || req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'NOT_FOUND', message: 'Requested endpoint does not exist' });
+  }
+  return res.sendFile(path.join(CLIENT_DIST, 'index.html'));
 });
 
 module.exports = app;
