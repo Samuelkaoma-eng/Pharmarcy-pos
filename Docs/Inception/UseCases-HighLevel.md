@@ -37,7 +37,164 @@ does not contain.
 
 ---
 
-## 2. Use case index
+## 2. Use case diagram
+
+All actors and all thirty-one use cases in one view. The shaded box is the system
+boundary: everything inside it is behaviour this platform provides, everything
+outside it is an actor. Primary actors sit along the top — they initiate.
+Supporting actors sit along the bottom — they are consulted or notified, and
+never start anything.
+
+Mermaid has no native UML use case notation, so there are no stick figures and no
+ellipses: actors are rectangles, use cases are stadium shapes, and the `«include»`
+and `«extend»` stereotypes are drawn as labelled dashed arrows. The relationships
+are the UML ones; only the glyphs differ.
+
+```mermaid
+flowchart TB
+    classDef actor fill:#dce7f3,stroke:#2f4a63,color:#14202b
+    classDef support fill:#efe9dc,stroke:#6f6141,color:#231e12
+    classDef uc fill:#ffffff,stroke:#55697d,color:#14202b
+
+    OWNER["Prospective<br/>Pharmacy Owner"]:::actor
+    OPERATOR["Platform Operator<br/>SuperAdmin"]:::actor
+    CASHIER["Cashier"]:::actor
+    PHARMACIST["Pharmacist"]:::actor
+    DOCTOR["Doctor"]:::actor
+    PADMIN["Pharmacy<br/>Administrator"]:::actor
+    STAFF["Any Staff Member"]:::actor
+
+    subgraph SYS["Pharmacy POS Platform"]
+        direction TB
+
+        subgraph PLAT["Platform administration - ControlHub"]
+            direction LR
+            UC01(["UC-01 Apply to Join Platform"]):::uc
+            UC02(["UC-02 Review Onboarding Application"]):::uc
+            UC03(["UC-03 Activate Pharmacy"]):::uc
+            UC04(["UC-04 Set Pharmacy Operational Limits"]):::uc
+            UC05(["UC-05 Raise Approval Request"]):::uc
+            UC06(["UC-06 Decide Approval Request"]):::uc
+            UC07(["UC-07 Suspend Pharmacy"]):::uc
+        end
+
+        subgraph SELL["Selling"]
+            direction LR
+            UC08(["UC-08 Process Sale"]):::uc
+            UC09(["UC-09 Apply Insurance Cover"]):::uc
+            UC10(["UC-10 Issue Receipt"]):::uc
+            UC11(["UC-11 View Sales History"]):::uc
+            UC30(["UC-30 Record Fiscal Reference"]):::uc
+        end
+
+        subgraph CLIN["Dispensing and clinical"]
+            direction LR
+            UC12(["UC-12 Register Patient"]):::uc
+            UC13(["UC-13 Triage Patient Visit"]):::uc
+            UC14(["UC-14 Record Vitals"]):::uc
+            UC15(["UC-15 Create Prescription"]):::uc
+            UC16(["UC-16 Verify Prescription"]):::uc
+            UC17(["UC-17 Dispense Prescription"]):::uc
+        end
+
+        subgraph STOCK["Stock and procurement"]
+            direction LR
+            UC18(["UC-18 Manage Product Catalogue"]):::uc
+            UC19(["UC-19 Look Up Medicine in Drug Directory"]):::uc
+            UC20(["UC-20 Manage Suppliers"]):::uc
+            UC21(["UC-21 Raise Purchase Order"]):::uc
+            UC22(["UC-22 Receive Stock Against Purchase Order"]):::uc
+            UC23(["UC-23 Adjust Stock"]):::uc
+            UC24(["UC-24 Monitor Expiry Alerts"]):::uc
+            UC25(["UC-25 Monitor Low Stock"]):::uc
+        end
+
+        subgraph PADM["Pharmacy administration"]
+            direction LR
+            UC26(["UC-26 Sign In"]):::uc
+            UC27(["UC-27 Manage Staff and Roles"]):::uc
+            UC28(["UC-28 Customise Pharmacy Branding"]):::uc
+            UC29(["UC-29 Manage Insurance Schemes"]):::uc
+            UC31(["UC-31 Consult Workflow Assistant"]):::uc
+        end
+    end
+
+    PATIENT["Patient / Customer"]:::support
+    SUPPLIER["Supplier"]:::support
+    SCHEME["Insurance Scheme"]:::support
+    DRUGDIR["Drug Directory<br/>openFDA"]:::support
+    ZRA["ZRA Smart Invoice"]:::support
+
+    OWNER --- UC01
+    OPERATOR --- UC02
+    OPERATOR --- UC03
+    OPERATOR --- UC04
+    OPERATOR --- UC05
+    OPERATOR --- UC06
+    OPERATOR --- UC07
+
+    CASHIER --- UC08
+    CASHIER --- UC09
+    CASHIER --- UC10
+    CASHIER --- UC30
+    CASHIER --- UC12
+    CASHIER --- UC13
+
+    PADMIN --- UC11
+    PADMIN --- UC20
+    PADMIN --- UC27
+    PADMIN --- UC28
+    PADMIN --- UC29
+
+    PHARMACIST --- UC14
+    PHARMACIST --- UC16
+    PHARMACIST --- UC17
+    PHARMACIST --- UC18
+    PHARMACIST --- UC19
+    PHARMACIST --- UC21
+    PHARMACIST --- UC22
+    PHARMACIST --- UC23
+    PHARMACIST --- UC24
+    PHARMACIST --- UC25
+
+    DOCTOR --- UC15
+
+    STAFF --- UC26
+    STAFF --- UC31
+
+    UC08 -.->|include| UC10
+    UC09 -.->|extend| UC08
+    UC30 -.->|extend| UC08
+    UC07 -.->|include| UC05
+    UC07 -.->|include| UC06
+
+    UC08 --- PATIENT
+    UC10 --- PATIENT
+    UC09 --- SCHEME
+    UC29 --- SCHEME
+    UC21 --- SUPPLIER
+    UC22 --- SUPPLIER
+    UC19 --- DRUGDIR
+    UC18 --- DRUGDIR
+    UC30 --- ZRA
+```
+
+Three things the diagram is meant to make obvious:
+
+1. **The platform tier exists.** UC-01 to UC-07 belong to nobody inside a
+   pharmacy. They are the reason this is a platform rather than a till, and they
+   are the part the superseded single-pharmacy document had no place for.
+2. **Suspension is not a button.** UC-07 includes UC-05 and UC-06, so putting a
+   pharmacy out of service goes through the same two-person maker-checker rule as
+   any other sensitive change. No operator can do it alone.
+3. **ZRA is outside the boundary.** UC-30 records a reference issued elsewhere;
+   it does not generate one. The arrow points out of the system for that reason,
+   and §3 of `../Transition/BetaTestReport.md` and LIM-005 in `../../DEFECT_LOG.md`
+   both record the same limit.
+
+---
+
+## 3. Use case index
 
 Priority follows the Unified Process principle of tackling architecturally
 significant and high-risk cases first. **Rank** drives the iteration each case
@@ -101,7 +258,7 @@ is detailed in.
 
 ---
 
-## 3. Brief descriptions
+## 4. Brief descriptions
 
 ### Platform administration
 
@@ -228,7 +385,7 @@ database itself.
 
 ---
 
-## 4. Inception scope
+## 5. Inception scope
 
 Per the marking guide, Inception details roughly 10% of use cases. The three
 selected are those that carry the greatest architectural risk:

@@ -1,0 +1,62 @@
+[
+  {
+    "file": "UseCases-HighLevel-1.mmd",
+    "doc": "Docs/Inception/UseCases-HighLevel.md"
+  },
+  {
+    "file": "ArchitectureProofOfConcept-1.mmd",
+    "doc": "Docs/Elaboration/ArchitectureProofOfConcept.md"
+  },
+  {
+    "file": "ArchitectureProofOfConcept-2.mmd",
+    "doc": "Docs/Elaboration/ArchitectureProofOfConcept.md"
+  },
+  {
+    "file": "DomainModel-1.mmd",
+    "doc": "Docs/Elaboration/DomainModel.md"
+  },
+  {
+    "file": "SystemSequenceDiagrams-1.mmd",
+    "doc": "Docs/Elaboration/SystemSequenceDiagrams.md"
+  },
+  {
+    "file": "SystemSequenceDiagrams-2.mmd",
+    "doc": "Docs/Elaboration/SystemSequenceDiagrams.md"
+  },
+  {
+    "file": "SystemSequenceDiagrams-3.mmd",
+    "doc": "Docs/Elaboration/SystemSequenceDiagrams.md"
+  },
+  {
+    "file": "SystemSequenceDiagrams-4.mmd",
+    "doc": "Docs/Elaboration/SystemSequenceDiagrams.md"
+  },
+  {
+    "file": "SystemSequenceDiagrams-5.mmd",
+    "doc": "Docs/Elaboration/SystemSequenceDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-1.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-2.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-3.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-4.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-5.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  },
+  {
+    "file": "DesignClassDiagrams-6.mmd",
+    "doc": "Docs/Elaboration/DesignClassDiagrams.md"
+  }
+]

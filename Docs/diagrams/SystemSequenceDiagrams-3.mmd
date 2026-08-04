@@ -1,0 +1,39 @@
+sequenceDiagram
+    actor Operator as Platform Operator
+    participant System as :System
+
+    Operator->>System: getOnboardingQueue()
+    activate System
+    System-->>Operator: pharmacies awaiting review
+    deactivate System
+
+    Operator->>System: getDocuments(tenantId)
+    activate System
+    System-->>Operator: documents, types, status, whether a file is held
+    deactivate System
+
+    loop for each submitted document
+        Operator->>System: downloadDocument(documentId)
+        activate System
+        System-->>Operator: the file itself
+        deactivate System
+
+        Operator->>System: reviewDocument(documentId, VERIFIED | REJECTED, notes)
+        activate System
+        System-->>Operator: recorded decision, reviewer, timestamp
+        deactivate System
+    end
+
+    Operator->>System: getReadiness(tenantId)
+    activate System
+    System-->>Operator: verified count, outstanding types, ready flag
+    deactivate System
+
+    alt every required document verified
+        Operator->>System: setTenantStatus(tenantId, ACTIVE)
+        activate System
+        System-->>Operator: pharmacy activated
+        deactivate System
+    else something outstanding
+        System-->>Operator: activation stays unavailable
+    end

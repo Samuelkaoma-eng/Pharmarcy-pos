@@ -1,0 +1,38 @@
+classDiagram
+    direction LR
+
+    class InsightController {
+        <<module>>
+        +getStatus(req, res) void
+        +getSimilarPresentations(req, res) Promise
+        +getTrends(req, res) Promise
+    }
+
+    class ClinicalInsight {
+        <<module>>
+        -MIN_HISTORY : Number = 5
+        -VITAL_SCALES : Map
+        -normalise(vitals) Object
+        -keywords(text) Array
+        -similarity(now, past, nowWords, pastWords) Number
+        +similarPresentations(tenantId, options) Promise
+        +presentationTrends(tenantId, options) Promise
+    }
+
+    class AiProvider {
+        <<module>>
+        -CLAUDE_MODEL : String
+        -GEMINI_MODEL : String
+        -askClaude(request) Promise
+        -askGemini(request) Promise
+        +ask(request) Promise
+        +askJson(request) Promise
+        +isConfigured() Boolean
+        +providers() Array
+    }
+
+    InsightController ..> ClinicalInsight
+    InsightController ..> AiProvider
+    ClinicalInsight ..> Db
+
+    note for AiProvider "ask() returns available true with text, or available false with a reason. It never throws and never invents an answer."

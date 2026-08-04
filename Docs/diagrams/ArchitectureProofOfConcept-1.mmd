@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph Presentation["Presentation — React 18 SPA, Vite"]
+        Pages["Pages<br/>POSCheckout · Inventory · Prescriptions<br/>TriageQueue · Staff · Settings"]
+        CHPages["ControlHub pages<br/>Onboarding · Tenants · Approvals"]
+        Shared["Shared components<br/>Receipt · Modal · CommandPalette"]
+        Ctx["AuthContext<br/>single source of session state"]
+    end
+
+    subgraph Client["Client access"]
+        ApiClient["api/client.js<br/>attaches bearer token, relative base URL"]
+    end
+
+    subgraph Boundary["Application boundary — Express"]
+        CORS["CORS allowlist"]
+        Limit["Rate limiters<br/>20 per 15 min on auth, 300 per min general"]
+        Auth["authenticate → req.user<br/>requireRole · controlHubOnly"]
+    end
+
+    subgraph App["Application logic — controllers"]
+        SaleC["saleController<br/>guards · pricing · VAT · cover split"]
+        InvC["inventoryController · supplierController"]
+        ClinC["prescriptionController · triageController · patientController"]
+        PlatC["controlHubController · documentController · approvalController"]
+    end
+
+    subgraph Services["Domain services"]
+        Fiscal["fiscalSimulator (SIMFIS)"]
+        Drugs["drugDirectory<br/>openFDA lookup · interaction screen, fails closed"]
+    end
+
+    subgraph Data["Persistence"]
+        Pool["pg connection pool"]
+        DB[("PostgreSQL 18<br/>21 tables, CHECK constraints,<br/>tenant_id on every owned row")]
+        Files["Upload directory<br/>outside the source tree"]
+    end
+
+    Pages --> ApiClient
+    CHPages --> ApiClient
+    Shared --> ApiClient
+    Ctx --> ApiClient
+    ApiClient -->|HTTPS, Bearer JWT| CORS
+    CORS --> Limit --> Auth
+    Auth --> SaleC & InvC & ClinC & PlatC
+    SaleC --> Fiscal
+    SaleC --> Drugs
+    SaleC & InvC & ClinC & PlatC --> Pool
+    PlatC --> Files
+    Pool --> DB
