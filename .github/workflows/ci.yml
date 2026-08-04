@@ -1,0 +1,227 @@
+name: Pharmacy POS CI Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+# The default token is read-only; each job asks for exactly what it needs.
+# CodeQL is the only one that writes, and only to the security tab.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build and test. The gate everything else hangs off.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: pharmacy_pos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Server Dependencies
+        run: npm --prefix server ci || npm --prefix server install
+
+      - name: Install Client Dependencies
+        run: npm --prefix client ci || npm --prefix client install
+
+      - name: Lint Server Source
+        run: npm --prefix server run lint
+
+      - name: Build Frontend Application
+        run: npm --prefix client run build
+
+      # An explicit reset rather than relying on an un-awaited initDb() firing
+      # on module import, which made the suite racy against a cold database
+      # (DEF-014).
+      - name: Apply Schema and Seed Data
+        run: npm --prefix server run db:reset
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: password
+          DB_NAME: pharmacy_pos
+
+      - name: Run Server Automated Test Suite
+        run: npm --prefix server test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: password
+          DB_NAME: pharmacy_pos
+          JWT_SECRET: ci_test_jwt_secret_key_123
+          REFRESH_SECRET: ci_test_refresh_secret_key_456
+
+  # ---------------------------------------------------------------------------
+  # Dependency vulnerabilities.
+  # ---------------------------------------------------------------------------
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # A pharmacy system holds patient records, so a known-exploitable
+      # dependency is a reportable problem rather than a warning to scroll past.
+      # The build fails on high and critical; moderate and low are reported.
+      - name: Audit server dependencies
+        run: npm --prefix server audit --audit-level=high
+
+      - name: Audit client dependencies
+        run: npm --prefix client audit --audit-level=high
+
+      - name: Report every advisory for the record
+        if: always()
+        run: |
+          echo "### Server advisories" >> "$GITHUB_STEP_SUMMARY"
+          npm --prefix server audit --json > server-audit.json || true
+          node -e "const a=require('./server-audit.json');const m=a.metadata?.vulnerabilities||{};console.log(Object.entries(m).map(([k,v])=>k+': '+v).join(' | '))" >> "$GITHUB_STEP_SUMMARY" || true
+
+  # ---------------------------------------------------------------------------
+  # Secrets. A leaked key in git history is not fixed by deleting the line.
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Gitleaks needs history: a secret removed in a later commit is still
+          # a secret, and scanning only the tip would miss it.
+          fetch-depth: 0
+
+      - name: Scan the working tree and history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Static analysis. Finds the injection and auth classes of bug that lint does
+  # not — which, in this codebase, is where the serious defects have been.
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: CodeQL static analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
+
+  # ---------------------------------------------------------------------------
+  # A bill of materials, so what shipped can be answered later. When an
+  # advisory lands against a transitive dependency months from now, the
+  # question "were we running it" needs an artefact, not a guess.
+  # ---------------------------------------------------------------------------
+  sbom:
+    name: Software bill of materials
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm --prefix server ci || npm --prefix server install
+          npm --prefix client ci || npm --prefix client install
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          npx --yes @cyclonedx/cyclonedx-npm --output-file server-sbom.json server/package.json || true
+          npx --yes @cyclonedx/cyclonedx-npm --output-file client-sbom.json client/package.json || true
+
+      - name: Publish the SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: '*-sbom.json'
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Checks specific to the decisions this project has committed to. A generic
+  # scanner cannot know that a simulated fiscal reference must never be written
+  # to the field holding a genuine one — so these are asserted here.
+  # ---------------------------------------------------------------------------
+  project-invariants:
+    name: Project safety invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: A simulated fiscal value never occupies the genuine field
+        run: |
+          if grep -rn "smart_invoice_ref" server/src/services/fiscalSimulator.js server/src/controllers/fiscalController.js 2>/dev/null | grep -v "^.*://" | grep -q "SET smart_invoice_ref"; then
+            echo "::error::SIMFIS must never write to smart_invoice_ref — that field holds genuine ZRA references only."
+            exit 1
+          fi
+          echo "OK: simulated fiscalisation keeps to its own columns."
+
+      - name: Interaction screening still fails closed
+        run: |
+          if grep -rn "interactions: \[\]" server/src/services/drugDirectory.js 2>/dev/null | grep -qv "available"; then
+            echo "::error::Interaction screening must report 'could not be screened', never an empty list that reads as safe."
+            exit 1
+          fi
+          echo "OK: interaction screening does not claim safety it has not established."
+
+      - name: No mock fallbacks masking a database outage
+        run: |
+          if grep -rn "(mock)" server/src --include=*.js | grep -v "__tests__" | grep -q .; then
+            echo "::error::A controller is answering with invented data. An outage must look like an outage (LIM-003)."
+            exit 1
+          fi
+          echo "OK: no controller invents data when the database is unreachable."
+
+      # --exclude-dir matters: without it this walks node_modules and takes
+      # minutes, and a check slow enough to be skipped is not a check.
+      - name: No API keys committed to the repository
+        run: |
+          if grep -rEn "(sk-ant-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,})" \
+               --include=*.js --include=*.jsx --include=*.json --include=*.yml \
+               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
+               . 2>/dev/null | grep -q .; then
+            echo "::error::What looks like a live API key is committed. Rotate it, then remove it from history."
+            exit 1
+          fi
+          echo "OK: no API keys in the tree."

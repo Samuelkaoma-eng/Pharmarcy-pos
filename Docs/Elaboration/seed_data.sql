@@ -1,0 +1,152 @@
+-- ====================================================================
+-- PHARMACY POS SYSTEM - SEED DATA FOR POSTGRESQL (VALID UUIDs & BCRYPT HASHES)
+-- Group 16 - Advanced Software Engineering (CSC4630)
+-- ====================================================================
+
+-- 1. Insert Tenants
+-- The platform tenant owns the ControlHub SuperAdmin account. It is not a
+-- trading pharmacy and holds no products, patients, or sales.
+INSERT INTO tenants (tenant_id, name, address, phone, license_number, status, theme_color, currency_symbol, owner_email)
+VALUES ('00000000-0000-0000-0000-0000000000ff', 'Platform Operations', 'Group 16 ControlHub', '+260970000000', 'PLATFORM-000', 'ACTIVE', '#0f172a', 'K', 'platform@group16pos.zm')
+ON CONFLICT (tenant_id) DO NOTHING;
+
+INSERT INTO tenants (tenant_id, name, address, phone, license_number, status, theme_color, currency_symbol, owner_email)
+VALUES ('11111111-1111-1111-1111-111111111111', 'Central Care Pharmacy', '123 Great East Road, Lusaka, Zambia', '+260971234567', 'PHAR-ZM-2026-001', 'ACTIVE', '#3b82f6', 'K', 'owner@centralcare.zm')
+ON CONFLICT (tenant_id) DO NOTHING;
+
+-- A second pharmacy, so cross-tenant isolation can be exercised by the tests.
+-- It deliberately reuses the usernames above to prove logins stay scoped.
+INSERT INTO tenants (tenant_id, name, address, phone, license_number, status, theme_color, currency_symbol, owner_email)
+VALUES ('99999999-9999-9999-9999-999999999999', 'Riverside Chemist', '45 Kafue Road, Lusaka, Zambia', '+260962223333', 'PHAR-ZM-2026-002', 'ACTIVE', '#16a34a', 'K', 'owner@riversidechemist.zm')
+ON CONFLICT (tenant_id) DO NOTHING;
+
+-- 2. Insert Users (Password: 'password123' bcrypt hash)
+INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role) VALUES
+('22222222-2222-2222-2222-2222222222ff', '00000000-0000-0000-0000-0000000000ff', 'superadmin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Platform Operator', 'SuperAdmin'),
+-- A second platform operator, because maker-checker requires the approver to
+-- be someone other than the requester.
+('22222222-2222-2222-2222-2222222222fe', '00000000-0000-0000-0000-0000000000ff', 'superadmin2', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Second Platform Operator', 'SuperAdmin'),
+('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'System Administrator', 'Admin'),
+('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', 'pharmacist', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Dr. Blessing Yabe (Pharmacist)', 'Pharmacist'),
+('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111111', 'cashier', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Samuel Kaoma (Cashier)', 'Cashier'),
+-- A prescriber who actually works here, so the consulting side of the queue has
+-- someone who can sign in and be handed patients.
+('22222222-2222-2222-2222-222222222204', '11111111-1111-1111-1111-111111111111', 'doctor', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Dr. Martin Phiri', 'Doctor'),
+('22222222-2222-2222-2222-222222222901', '99999999-9999-9999-9999-999999999999', 'admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Riverside Administrator', 'Admin'),
+('22222222-2222-2222-2222-222222222902', '99999999-9999-9999-9999-999999999999', 'riverside_cashier', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Riverside Cashier', 'Cashier')
+ON CONFLICT (user_id) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+
+-- 2b. A Riverside product, used to prove one tenant cannot reach another's stock.
+INSERT INTO products (product_id, tenant_id, barcode, name, dosage, category, cost_price, selling_price, unit_of_measure, requires_prescription, reorder_level) VALUES
+('55555555-5555-5555-5555-555555555901', '99999999-9999-9999-9999-999999999999', '600999456701', 'Riverside Paracetamol 500mg', '500mg', 'Pain Relief', 12.50, 27.00, 'tablet', FALSE, 20)
+ON CONFLICT (product_id) DO NOTHING;
+
+-- 3. Insert Customers (Patients)
+INSERT INTO customers (customer_id, tenant_id, name, phone, email, nrc, gender, dob, address) VALUES
+('33333333-3333-3333-3333-333333333301', '11111111-1111-1111-1111-111111111111', 'Chipego Mukimba', '+260965111222', 'chipego@example.com', '111222/10/1', 'Female', '1998-05-14', 'Plot 45, Olympia Park, Lusaka'),
+('33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111111', 'Joshua Kamunda', '+260977333444', 'joshua@example.com', '333444/10/1', 'Male', '1995-11-20', 'Plot 12, Roma, Lusaka'),
+('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111111', 'Maximillan Soko', '+260955555666', 'max@example.com', '555666/10/1', 'Male', '1997-03-08', 'Kalingalinga, Lusaka'),
+-- A patient of the second pharmacy, so tenant isolation can be tested with a
+-- real record on each side rather than only an absence on one.
+('33333333-3333-3333-3333-333333333901', '99999999-9999-9999-9999-999999999999', 'Riverside Patient', '+260954444555', 'patient@riverside.example', '777888/10/1', 'Female', '1990-02-11', 'Kafue Road, Lusaka')
+ON CONFLICT (customer_id) DO NOTHING;
+
+-- 4. Insert Doctors
+-- Dr. Phiri works here and holds an account, so visits can be assigned to him
+-- and he sees his own queue. Dr. Banda is a referring paediatrician with no
+-- login: her prescriptions are honoured, but nothing is routed to her.
+INSERT INTO doctors (doctor_id, tenant_id, user_id, name, specialty, phone, license_number) VALUES
+('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222204', 'Dr. Martin Phiri', 'General Medicine', '+260977112233', 'HPCZ-MD-4091'),
+('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111111', NULL, 'Dr. Sarah Banda', 'Pediatrics', '+260966445566', 'HPCZ-MD-5120')
+ON CONFLICT (doctor_id) DO NOTHING;
+
+-- 5. Insert Products
+INSERT INTO products (product_id, tenant_id, barcode, name, dosage, category, cost_price, selling_price, unit_of_measure, requires_prescription, reorder_level) VALUES
+('55555555-5555-5555-5555-555555555501', '11111111-1111-1111-1111-111111111111', '600123456701', 'Paracetamol 500mg', '500mg', 'Pain Relief', 12.50, 25.00, 'tablet', FALSE, 20),
+('55555555-5555-5555-5555-555555555502', '11111111-1111-1111-1111-111111111111', '600123456702', 'Amoxicillin 250mg', '250mg', 'Antibiotic', 45.00, 85.00, 'capsule', TRUE, 10),
+('55555555-5555-5555-5555-555555555503', '11111111-1111-1111-1111-111111111111', '600123456703', 'Ibuprofen 400mg', '400mg', 'Anti-inflammatory', 20.00, 40.00, 'tablet', FALSE, 15),
+('55555555-5555-5555-5555-555555555504', '11111111-1111-1111-1111-111111111111', '600123456704', 'Cough Syrup (Benylin)', '100ml', 'Cold & Flu', 35.00, 65.00, 'bottle', FALSE, 5),
+('55555555-5555-5555-5555-555555555505', '11111111-1111-1111-1111-111111111111', '600123456705', 'Metformin 500mg', '500mg', 'Diabetes', 70.00, 120.00, 'tablet', TRUE, 10)
+ON CONFLICT (product_id) DO NOTHING;
+
+-- 6. Insert Product Batches
+INSERT INTO product_batches (batch_id, product_id, tenant_id, batch_number, expiry_date, initial_quantity, quantity_on_hand) VALUES
+('66666666-6666-6666-6666-666666666601', '55555555-5555-5555-5555-555555555501', '11111111-1111-1111-1111-111111111111', 'BATCH-PARA-2026-A', '2027-12-31', 200, 150),
+('66666666-6666-6666-6666-666666666602', '55555555-5555-5555-5555-555555555502', '11111111-1111-1111-1111-111111111111', 'BATCH-AMOX-2026-B', '2026-11-15', 100, 45),
+('66666666-6666-6666-6666-666666666603', '55555555-5555-5555-5555-555555555503', '11111111-1111-1111-1111-111111111111', 'BATCH-IBU-2026-C', '2027-06-30', 100, 80),
+-- Expired cough syrup, kept on file so the checkout expiry guard has a real
+-- case to refuse. Dates are relative to CURRENT_DATE so it never lapses back
+-- into being sellable as the project ages.
+('66666666-6666-6666-6666-666666666604', '55555555-5555-5555-5555-555555555504', '11111111-1111-1111-1111-111111111111', 'BATCH-COUGH-EXPIRED', CURRENT_DATE - INTERVAL '30 days', 60, 40)
+ON CONFLICT (batch_id) DO NOTHING;
+
+-- 7. Insert Stock Movements (Audit Ledger)
+INSERT INTO stock_movements (movement_id, tenant_id, product_id, batch_id, quantity, movement_type, performed_by_id, notes) VALUES
+('77777777-7777-7777-7777-777777777701', '11111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555501', '66666666-6666-6666-6666-666666666601', 200, 'RECEIVE', '22222222-2222-2222-2222-222222222201', 'Initial stock delivery'),
+('77777777-7777-7777-7777-777777777702', '11111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555501', '66666666-6666-6666-6666-666666666601', -50, 'DISPENSE', '22222222-2222-2222-2222-222222222203', 'Dispensed for Sale #REC-20260802-1001')
+ON CONFLICT (movement_id) DO NOTHING;
+
+-- 8. Insert Visits
+INSERT INTO visits (visit_id, tenant_id, customer_id, doctor_id, date, reason, assessment, status, queue_number) VALUES
+('88888888-8888-8888-8888-888888888801', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333301', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Persistent cough and mild fever', 'Upper respiratory tract infection', 'IN_PROGRESS', 1),
+('88888888-8888-8888-8888-888888888802', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333302', '44444444-4444-4444-4444-444444444401', CURRENT_DATE, 'Routine blood pressure checkup', NULL, 'WAITING', 2)
+ON CONFLICT (visit_id) DO NOTHING;
+
+-- 9. Insert Vitals
+INSERT INTO vitals (vitals_id, tenant_id, visit_id, customer_id, bp, heart_rate, temperature, spo2, weight, recorded_by_id) VALUES
+('99999999-9999-9999-9999-999999999901', '11111111-1111-1111-1111-111111111111', '88888888-8888-8888-8888-888888888801', '33333333-3333-3333-3333-333333333301', '120/80', '72', '37.1', '98%', '65kg', '22222222-2222-2222-2222-222222222202')
+ON CONFLICT (vitals_id) DO NOTHING;
+
+-- 10. Insert Prescription
+INSERT INTO prescriptions (prescription_id, tenant_id, doctor_id, customer_id, visit_id, valid_until, notes, status, verified_by_id) VALUES
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444401', '33333333-3333-3333-3333-333333333301', '88888888-8888-8888-8888-888888888801', '2026-08-30', 'Take medication with water after meals', 'VERIFIED', '22222222-2222-2222-2222-222222222202')
+ON CONFLICT (prescription_id) DO NOTHING;
+
+INSERT INTO prescription_items (prescription_item_id, prescription_id, product_id, dosage_instructions, quantity) VALUES
+('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '55555555-5555-5555-5555-555555555502', 'Take 1 capsule 3 times daily after meals for 7 days', 1)
+ON CONFLICT (prescription_item_id) DO NOTHING;
+
+-- 11. Insert a pharmacy awaiting review, with its compliance documents.
+-- This gives the ControlHub onboarding queue something real to review rather
+-- than the hardcoded placeholder the screen used to invent.
+INSERT INTO tenants (tenant_id, name, address, phone, license_number, status, currency_symbol, owner_email)
+VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Ndola MediQuick Pharmacy', '45 President Avenue, Ndola, Zambia', '+260966888999', 'PHAR-ZM-2026-042', 'UNDER_REVIEW', 'K', 'admin@mediquick.zm')
+ON CONFLICT (tenant_id) DO NOTHING;
+
+INSERT INTO users (user_id, tenant_id, username, password_hash, full_name, role) VALUES
+('22222222-2222-2222-2222-2222222222c1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'mediquick_admin', '$2a$10$VJQWE5WGuYhwUVe7O6N8O.eHZLftg0SPX48HRUMPCcDjfX0hUSSyy', 'Ndola MediQuick Administrator', 'Admin')
+ON CONFLICT (user_id) DO NOTHING;
+
+-- The document set ZAMRA actually requires to license a retail pharmacy.
+INSERT INTO onboarding_documents (document_id, tenant_id, document_type, file_name, status) VALUES
+('dddddddd-dddd-dddd-dddd-ddddddddddd1', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PACRA_CERTIFICATE', 'pacra-certificate-of-incorporation.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd2', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'TPIN_CERTIFICATE', 'zra-tpin-certificate.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd3', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACIST_PRACTISING', 'hpcz-practising-certificate.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd4', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PHARMACIST_ID', 'pharmacist-nrc.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd5', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_PROOF', 'premises-lease-agreement.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd6', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'PREMISES_FLOOR_PLAN', 'dispensary-floor-plan.pdf', 'PENDING'),
+('dddddddd-dddd-dddd-dddd-ddddddddddd7', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'ZAMRA_INSPECTION', 'zamra-pre-licensing-inspection.pdf', 'PENDING')
+ON CONFLICT (document_id) DO NOTHING;
+
+-- 12. Suppliers, so received stock is traceable to who provided it.
+INSERT INTO suppliers (supplier_id, tenant_id, name, contact_name, phone, email, address, tpin, zamra_licence) VALUES
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', '11111111-1111-1111-1111-111111111111', 'Zambia Medical Stores Ltd', 'Grace Tembo', '+260211234567', 'orders@zmsl.zm', 'Plot 8, Mungwi Road, Lusaka', '1001234567', 'ZAMRA-WHL-2026-011'),
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', '11111111-1111-1111-1111-111111111111', 'Copperbelt Pharmaceuticals', 'Mwansa Bwalya', '+260212998877', 'sales@copperpharm.zm', 'Plot 21, Kitwe Industrial Area', '1009876543', 'ZAMRA-WHL-2026-042')
+ON CONFLICT (supplier_id) DO NOTHING;
+
+-- 13. An insurance scheme and a covered patient.
+INSERT INTO insurance_schemes (scheme_id, tenant_id, name, cover_percent, contact_phone) VALUES
+('ffffffff-ffff-ffff-ffff-fffffffffff1', '11111111-1111-1111-1111-111111111111', 'NHIMA', 100.00, '+260211445566'),
+('ffffffff-ffff-ffff-ffff-fffffffffff2', '11111111-1111-1111-1111-111111111111', 'Madison Health', 80.00, '+260211778899')
+ON CONFLICT (scheme_id) DO NOTHING;
+
+INSERT INTO scheme_memberships (membership_id, tenant_id, scheme_id, customer_id, member_number, valid_until) VALUES
+('11111111-2222-3333-4444-555555555551', '11111111-1111-1111-1111-111111111111', 'ffffffff-ffff-ffff-ffff-fffffffffff2', '33333333-3333-3333-3333-333333333301', 'MAD-4417-002', '2027-06-30')
+ON CONFLICT (scheme_id, customer_id) DO NOTHING;
+
+-- 14. A standard-rated sundry, to prove VAT is applied per product rather than
+-- as one blanket rate. Medicines above are zero-rated under Group 6 of the
+-- Zambian VAT (Zero-Rating) Order; a first aid kit is not a medicine.
+INSERT INTO products (product_id, tenant_id, barcode, name, category, cost_price, selling_price, unit_of_measure, requires_prescription, reorder_level, vat_treatment) VALUES
+('55555555-5555-5555-5555-555555555506', '11111111-1111-1111-1111-111111111111', '600123456706', 'First Aid Kit (Standard)', 'Sundries', 90.00, 180.00, 'kit', FALSE, 5, 'STANDARD')
+ON CONFLICT (product_id) DO NOTHING;
