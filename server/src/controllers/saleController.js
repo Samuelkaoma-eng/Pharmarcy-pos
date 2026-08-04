@@ -207,6 +207,26 @@ exports.createSale = async (req, res) => {
 
       const computedTotal = computedSubtotal + computedTaxAmount;
 
+      // The patient this sale is recorded against, resolved once and scoped to
+      // this pharmacy. The name is read here so the response can carry the value
+      // that was actually written: the receipt printed for the patient headed
+      // every sale "Counter sale", because the response named no customer at
+      // all, and a document handed to a named patient must not say otherwise.
+      let customerName = null;
+
+      if (customerId) {
+        const customerRes = await client.query(
+          'SELECT customer_id, name FROM customers WHERE customer_id = $1 AND tenant_id = $2',
+          [customerId, tenantId]
+        );
+
+        if (customerRes.rows.length === 0) {
+          throw new Error('Patient not found for this pharmacy');
+        }
+
+        customerName = customerRes.rows[0].name;
+      }
+
       // Insurance. The scheme covers its declared share of the basket and the
       // patient pays the balance; the sale total is unchanged either way.
       let schemeId = null;
@@ -308,6 +328,10 @@ exports.createSale = async (req, res) => {
         data: {
           sale_id: saleId,
           receipt_number: receiptNumber,
+          customer_id: customerId || null,
+          // Null for a genuine walk-in, which is what lets the receipt fall
+          // back to "Counter sale" honestly.
+          customer_name: customerName,
           subtotal: computedSubtotal.toFixed(2),
           tax_amount: computedTaxAmount.toFixed(2),
           total: computedTotal.toFixed(2),
