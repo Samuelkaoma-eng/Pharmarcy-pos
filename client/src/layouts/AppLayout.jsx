@@ -31,19 +31,19 @@ export default function AppLayout() {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/pos', icon: ShoppingCart, label: 'POS Checkout' },
-    { path: '/inventory', icon: Package, label: 'Inventory' },
-    { path: '/patients', icon: Users, label: 'Patients' },
-    { path: '/triage', icon: Activity, label: 'Triage Queue' },
-    { path: '/prescriptions', icon: FileText, label: 'Prescriptions' },
-    { path: '/sales', icon: History, label: 'Sales History' },
-    { path: '/till', icon: Wallet, label: 'Till Sessions' },
-    { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
-    { path: '/procurement', icon: Truck, label: 'Procurement' },
-    { path: '/insurance', icon: HeartHandshake, label: 'Insurance' },
+    { path: '/pos', icon: ShoppingCart, label: 'POS Checkout', roles: ['Admin', 'Pharmacist', 'Cashier'] },
+    { path: '/inventory', icon: Package, label: 'Inventory', roles: ['Admin', 'Pharmacist'] },
+    { path: '/patients', icon: Users, label: 'Patients', roles: ['Admin', 'Pharmacist', 'Doctor'] },
+    { path: '/triage', icon: Activity, label: 'Triage Queue', roles: ['Admin', 'Pharmacist', 'Doctor'] },
+    { path: '/prescriptions', icon: FileText, label: 'Prescriptions', roles: ['Admin', 'Pharmacist', 'Doctor'] },
+    { path: '/sales', icon: History, label: 'Sales History', roles: ['Admin', 'Pharmacist', 'Cashier'] },
+    { path: '/till', icon: Wallet, label: 'Till Sessions', roles: ['Admin', 'Pharmacist', 'Cashier'] },
+    { path: '/reports', icon: FileSpreadsheet, label: 'Reports', roles: ['Admin'] },
+    { path: '/procurement', icon: Truck, label: 'Procurement', roles: ['Admin', 'Pharmacist'] },
+    { path: '/insurance', icon: HeartHandshake, label: 'Insurance', roles: ['Admin', 'Pharmacist'] },
     { path: '/agent', icon: Bot, label: 'Assistant' },
-    { path: '/staff', icon: UsersRound, label: 'Staff & Roles' },
-    { path: '/settings', icon: Settings, label: 'Site Settings' },
+    { path: '/staff', icon: UsersRound, label: 'Staff & Roles', roles: ['Admin'] },
+    { path: '/settings', icon: Settings, label: 'Site Settings', roles: ['Admin'] },
   ];
 
   const handleLogout = () => {
@@ -77,7 +77,7 @@ export default function AppLayout() {
           </button>
         </div>
         <nav className="sidebar-nav">
-          {navItems.map((item) => {
+          {navItems.filter(item => !item.roles || item.roles.includes(user?.role)).map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             return (
               <Link key={item.path} to={item.path} className={`nav-item ${isActive ? 'active' : ''}`}>

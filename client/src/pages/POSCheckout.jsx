@@ -35,6 +35,7 @@ export default function POSCheckout() {
   // `undefined` means not looked up yet, `null` means looked up and not covered.
   // The two must not render the same way: one is silence, the other is an answer.
   const [coverage, setCoverage] = useState(undefined);
+  const [rxOptions, setRxOptions] = useState([]);
   // Below 900px the basket is a bottom sheet rather than a column. Collapsed it
   // still shows the item count, the running total and the button that takes the
   // money — the three things a cashier must be able to reach without hunting.
@@ -61,14 +62,13 @@ export default function POSCheckout() {
     loadCustomers();
   }, []);
 
-  // Cover is resolved by the server at checkout from the patient's membership.
-  // This lookup is the same question asked early, so the cashier can tell the
-  // patient what they will pay before taking the money rather than after.
   useEffect(() => {
     let cancelled = false;
 
     if (!customerId) {
       setCoverage(undefined);
+      setRxOptions([]);
+      setPrescriptionId('');
       return () => { cancelled = true; };
     }
 
@@ -77,10 +77,17 @@ export default function POSCheckout() {
         const res = await get(`insurance/coverage/${customerId}`);
         if (!cancelled) setCoverage(res?.data ?? null);
       } catch (e) {
-        // A failed lookup is not "no cover". Left unknown so the summary says
-        // it could not be checked rather than quietly billing the full amount.
         if (!cancelled) setCoverage(undefined);
         toast.error('Could not check insurance cover');
+      }
+    })();
+
+    (async () => {
+      try {
+        const res = await get(`prescriptions?status=VERIFIED&customerId=${customerId}`);
+        if (!cancelled) setRxOptions(res?.data ?? []);
+      } catch (e) {
+        if (!cancelled) setRxOptions([]);
       }
     })();
 
@@ -277,7 +284,7 @@ export default function POSCheckout() {
                 <span className="stock-text" style={{ fontSize: '0.8rem', color: (p.quantity_on_hand ?? 0) <= 0 ? 'var(--danger)' : 'var(--text-2)' }}>
                   {(p.quantity_on_hand ?? 0) <= 0 ? 'Out of stock' : `Stock: ${p.quantity_on_hand}`}
                 </span>
-                <span className="price-text" style={{ color: '#4ade80', fontWeight: '700', fontSize: '1.1rem' }}>
+                <span className="price-text" style={{ color: 'var(--ok)', fontWeight: '700', fontSize: '1.1rem' }}>
                   {currency} <NumberFlow value={parseFloat(p.selling_price)} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                 </span>
               </div>
@@ -317,7 +324,7 @@ export default function POSCheckout() {
         <div className="cart-scroll">
         <div>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <ShoppingCart size={20} color="#3b82f6" /> Active Sale Basket ({cart.length})
+            <ShoppingCart size={20} color="var(--tenant-primary)" /> Active Sale Basket ({cart.length})
           </h3>
 
           {cart.length === 0 ? (
@@ -338,7 +345,7 @@ export default function POSCheckout() {
                         <button className="qty-btn" onClick={() => updateQty(item.product_id, 1)}><Plus size={12}/></button>
                       </div>
                     </td>
-                    <td style={{ color: '#4ade80' }}>
+                    <td style={{ color: 'var(--ok)' }}>
                       {currency} <NumberFlow value={item.subtotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                     </td>
                     <td><button className="icon-btn text-danger" onClick={() => removeFromCart(item.product_id)}><Trash2 size={16}/></button></td>
@@ -387,14 +394,30 @@ export default function POSCheckout() {
 
           {cart.some(i => i.requires_prescription) && (
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>Prescription ID (Required):</label>
-              <input 
-                type="text" 
-                className="input-field" 
-                placeholder="Enter Prescription #" 
-                value={prescriptionId} 
-                onChange={e => setPrescriptionId(e.target.value)} 
-              />
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>Prescription (Required):</label>
+              {!customerId ? (
+                <p style={{ fontSize: '0.8rem', color: 'var(--warn)', margin: '4px 0' }}>
+                  Select a patient first to see their verified prescriptions.
+                </p>
+              ) : rxOptions.length === 0 ? (
+                <p style={{ fontSize: '0.8rem', color: 'var(--warn)', margin: '4px 0' }}>
+                  No verified prescriptions for this patient. Create and verify one on the Prescriptions page first.
+                </p>
+              ) : (
+                <select
+                  className="input-field"
+                  value={prescriptionId}
+                  onChange={e => setPrescriptionId(e.target.value)}
+                >
+                  <option value="">— Select a prescription —</option>
+                  {rxOptions.map(rx => (
+                    <option key={rx.prescription_id} value={rx.prescription_id}>
+                      {rx.item_summary || 'Prescription'} — {rx.doctor_name || 'Unknown doctor'}
+                      {rx.has_lapsed ? ' (EXPIRED)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -429,7 +452,7 @@ export default function POSCheckout() {
               </div>
             )}
             {coverage && (
-              <div style={{ fontSize: '0.78rem', color: '#4ade80', marginTop: '6px' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--ok)', marginTop: '6px' }}>
                 {coverage.name} · covers {coverPercent}%
                 {coverage.member_number ? ` · member ${coverage.member_number}` : ''}
               </div>
@@ -460,7 +483,7 @@ export default function POSCheckout() {
             </div>
             <div className="summary-row summary-total">
               <span>Total:</span>
-              <span style={{ color: '#4ade80' }}>
+              <span style={{ color: 'var(--ok)' }}>
                 {currency} <NumberFlow value={grandTotal} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
               </span>
             </div>
@@ -474,7 +497,7 @@ export default function POSCheckout() {
                 </div>
                 <div className="summary-row summary-total">
                   <span>Patient pays:</span>
-                  <span style={{ color: '#4ade80' }}>
+                  <span style={{ color: 'var(--ok)' }}>
                     {currency} <NumberFlow value={patientPays} format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />
                   </span>
                 </div>
