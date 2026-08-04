@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 describe('Prescription lifecycle', () => {
@@ -18,7 +18,7 @@ describe('Prescription lifecycle', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('creates a prescription with items', async () => {

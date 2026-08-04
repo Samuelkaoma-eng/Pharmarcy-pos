@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // SIMFIS is a teaching model of fiscalisation. These tests assert two things:
@@ -17,7 +17,7 @@ describe('Simulated fiscalisation (SIMFIS)', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('states plainly that it is not an approved provider', async () => {

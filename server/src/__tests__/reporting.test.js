@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // The system recorded everything a pharmacy owes and holds, and could report
@@ -35,7 +35,7 @@ describe('Reporting', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   describe('VAT summary', () => {

@@ -1,11 +1,11 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 const { SEED, controlHubLogin } = require('./helpers/login');
 
 describe('Authentication and ControlHub access control', () => {
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('rejects a login with no credentials', async () => {

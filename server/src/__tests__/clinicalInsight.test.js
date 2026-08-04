@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // The insight service answers "what has this pharmacy recorded before for
@@ -23,7 +23,7 @@ describe('Clinical insight', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   // Walk a patient through the clinic so there is a completed visit with a

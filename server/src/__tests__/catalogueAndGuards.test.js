@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // Covers DEF-034 to DEF-037 and LIM-001/LIM-002. Each case fails without the
@@ -17,7 +17,7 @@ describe('Catalogue fields and the guards that read them', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   const addProduct = (body) =>

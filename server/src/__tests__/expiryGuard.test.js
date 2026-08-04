@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 describe('Checkout expiry guard', () => {
@@ -11,7 +11,7 @@ describe('Checkout expiry guard', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('refuses a named batch that has expired', async () => {

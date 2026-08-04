@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
 
 const REVIEW_TENANT = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
@@ -9,7 +9,7 @@ const SUPPLIER = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1';
 const MADISON = 'ffffffff-ffff-ffff-ffff-fffffffffff2';
 
 afterAll(async () => {
-  await pool.end();
+  await closeAll();
 });
 
 describe('VAT is decided per product, not as one blanket rate', () => {

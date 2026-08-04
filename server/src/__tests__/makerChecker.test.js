@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
 
 describe('Maker-checker approvals', () => {
@@ -16,7 +16,7 @@ describe('Maker-checker approvals', () => {
   afterAll(async () => {
     await pool.query('DELETE FROM approval_requests');
     await pool.query('UPDATE tenants SET status = $1 WHERE tenant_id = $2', ['ACTIVE', SEED.riversideTenantId]);
-    await pool.end();
+    await closeAll();
   });
 
   it('publishes the actions that may be routed for approval', async () => {

@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
 const { REQUIRED_TYPES } = require('../services/onboardingReadiness');
 
@@ -18,7 +18,7 @@ describe('Tenant onboarding and ControlHub review', () => {
     if (registeredTenantId) {
       await pool.query('DELETE FROM tenants WHERE tenant_id = $1', [registeredTenantId]);
     }
-    await pool.end();
+    await closeAll();
   });
 
   it('accepts a public registration and files it as REGISTERED', async () => {

@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 describe('Inventory receiving, dispensing and alerts', () => {
@@ -13,7 +13,7 @@ describe('Inventory receiving, dispensing and alerts', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   it('receives a new batch and records the movement', async () => {

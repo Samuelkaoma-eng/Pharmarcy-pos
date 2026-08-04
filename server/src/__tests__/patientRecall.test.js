@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../app');
-const { pool } = require('../config/db');
+const { closeAll } = require('./helpers/adminDb');
 const { SEED, login } = require('./helpers/login');
 
 // Recall keeps a real list of patients due back. The reminders are simulated,
@@ -18,7 +18,7 @@ describe('Patient recall and simulated reminders', () => {
   });
 
   afterAll(async () => {
-    await pool.end();
+    await closeAll();
   });
 
   const schedule = async (overrides = {}) => {
