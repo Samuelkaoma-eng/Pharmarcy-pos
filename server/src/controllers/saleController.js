@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { openSessionFor } = require('./tillController');
 
 // Standard rate. Applied only to products marked STANDARD; medicines are
 // zero-rated under Group 6 of the Zambian VAT (Zero-Rating) Order.
@@ -7,7 +8,7 @@ const VAT_RATE = 0.16;
 exports.createSale = async (req, res) => {
   try {
     const { tenantId, userId } = req.user;
-    const { customerId, prescriptionId, items, paymentType = 'cash', smartInvoiceRef } = req.body;
+    const { customerId, prescriptionId, visitId, items, paymentType = 'cash', smartInvoiceRef } = req.body;
     // items: [{productId, batchId, quantity}]
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -21,6 +22,69 @@ exports.createSale = async (req, res) => {
       let computedSubtotal = 0;
       let computedTaxAmount = 0;
       const validatedItems = [];
+
+      // The shift this sale belongs to. A sale used to belong to a cashier but
+      // not to a shift, so takings could not be reconciled against a drawer and
+      // a shortfall was invisible (LIM-004).
+      //
+      // Where the pharmacy has turned till control on, no open session means no
+      // sale: an unattributable taking is exactly what the control exists to
+      // prevent. Where it is off, the sale still binds to an open session when
+      // there is one, so reconciliation works for pharmacies easing into it.
+      const tillSession = await openSessionFor(client, userId, tenantId);
+
+      const tillPolicy = await client.query(
+        'SELECT require_till_session FROM tenants WHERE tenant_id = $1',
+        [tenantId]
+      );
+
+      if (tillPolicy.rows[0]?.require_till_session && !tillSession) {
+        throw new Error('NO TILL SESSION: open a till session before ringing up a sale');
+      }
+
+      const tillSessionId = tillSession ? tillSession.till_session_id : null;
+
+      // 0. Resolve the prescription once, before pricing anything.
+      // Supplying an id was previously the whole of the check: the prescription
+      // was never loaded, so an unverified one, one written a year ago, or one
+      // listing entirely different medicines all unlocked a controlled sale.
+      let prescribed = new Map();
+
+      if (prescriptionId) {
+        const prescRes = await client.query(
+          `SELECT prescription_id, status, valid_until,
+                  valid_until IS NOT NULL AND valid_until < CURRENT_DATE AS has_lapsed
+           FROM prescriptions
+           WHERE prescription_id = $1 AND tenant_id = $2`,
+          [prescriptionId, tenantId]
+        );
+
+        if (prescRes.rows.length === 0) {
+          throw new Error('Prescription not found for this pharmacy');
+        }
+
+        const prescription = prescRes.rows[0];
+
+        // A pharmacist's verification is what makes a prescription dispensable.
+        if (prescription.status !== 'VERIFIED') {
+          throw new Error(
+            `PRESCRIPTION NOT VERIFIED: this prescription is ${prescription.status.toLowerCase()} and must be verified by a pharmacist before dispensing`
+          );
+        }
+
+        if (prescription.has_lapsed) {
+          throw new Error(
+            `PRESCRIPTION EXPIRED: it lapsed on ${new Date(prescription.valid_until).toISOString().slice(0, 10)}`
+          );
+        }
+
+        const prescItems = await client.query(
+          'SELECT product_id, quantity FROM prescription_items WHERE prescription_id = $1',
+          [prescriptionId]
+        );
+
+        prescribed = new Map(prescItems.rows.map((r) => [r.product_id, r.quantity]));
+      }
 
       // 1. Fetch official DB prices and calculate subtotals on server side
       for (const item of items) {
@@ -40,8 +104,26 @@ exports.createSale = async (req, res) => {
         const product = prodRes.rows[0];
 
         // Prescription Guard Check
-        if (product.requires_prescription && !prescriptionId) {
-          throw new Error(`PRESCRIPTION REQUIRED: Product '${product.name}' requires a valid prescription ID`);
+        if (product.requires_prescription) {
+          if (!prescriptionId) {
+            throw new Error(`PRESCRIPTION REQUIRED: Product '${product.name}' requires a valid prescription ID`);
+          }
+
+          // The prescription has to authorise this medicine, not merely exist.
+          // Checking only that one was supplied let any prescription unlock any
+          // controlled drug in the catalogue.
+          if (!prescribed.has(product.product_id)) {
+            throw new Error(
+              `NOT PRESCRIBED: the prescription supplied does not list '${product.name}'`
+            );
+          }
+
+          const authorised = prescribed.get(product.product_id);
+          if (item.quantity > authorised) {
+            throw new Error(
+              `EXCEEDS PRESCRIPTION: '${product.name}' is prescribed as ${authorised}, ${item.quantity} requested`
+            );
+          }
         }
 
         // Expiry Guard Check
@@ -156,14 +238,31 @@ exports.createSale = async (req, res) => {
       const receiptNumber = `REC-${dateStr}-${randomNum}`;
 
       // 3. Insert Sale Record
+      // A visit named on the sale must be this pharmacy's and still open, so
+      // the walk-in-to-till trail cannot be fabricated after the fact.
+      let resolvedVisitId = null;
+      if (visitId) {
+        const visitRes = await client.query(
+          'SELECT visit_id, status FROM visits WHERE visit_id = $1 AND tenant_id = $2',
+          [visitId, tenantId]
+        );
+        if (visitRes.rows.length === 0) {
+          throw new Error('Visit not found for this pharmacy');
+        }
+        if (['COMPLETED', 'CANCELLED'].includes(visitRes.rows[0].status)) {
+          throw new Error('That visit is already closed');
+        }
+        resolvedVisitId = visitRes.rows[0].visit_id;
+      }
+
       const saleRes = await client.query(
         `INSERT INTO sales (tenant_id, receipt_number, subtotal, tax_amount, total, status, user_id,
-                            customer_id, prescription_id, scheme_id, scheme_covered, patient_payable,
-                            smart_invoice_ref)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING sale_id`,
+                            customer_id, prescription_id, visit_id, till_session_id, scheme_id, scheme_covered,
+                            patient_payable, smart_invoice_ref)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING sale_id`,
         [
           tenantId, receiptNumber, computedSubtotal, computedTaxAmount, computedTotal, 'COMPLETED',
-          userId, customerId || null, prescriptionId || null, schemeId, schemeCovered, patientPayable,
+          userId, customerId || null, prescriptionId || null, resolvedVisitId, tillSessionId, schemeId, schemeCovered, patientPayable,
           // Recorded when the pharmacy's ZRA-approved system has issued one.
           // Never generated here: this is not an approved invoicing provider.
           smartInvoiceRef || null
@@ -214,7 +313,8 @@ exports.createSale = async (req, res) => {
           total: computedTotal.toFixed(2),
           scheme_covered: schemeCovered.toFixed(2),
           patient_payable: patientPayable.toFixed(2),
-          smart_invoice_ref: smartInvoiceRef || null
+          smart_invoice_ref: smartInvoiceRef || null,
+          till_session_id: tillSessionId
         }
       });
     } catch (err) {
@@ -233,7 +333,19 @@ exports.createSale = async (req, res) => {
 exports.getSales = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const result = await db.query('SELECT * FROM sales WHERE tenant_id = $1 ORDER BY date_time DESC LIMIT 100', [tenantId]);
+    // The history screen shows who served and how it was settled. Both used to
+    // be missing from this response, which is why that screen had invented them.
+    const result = await db.query(
+      `SELECT s.*,
+              u.full_name AS cashier,
+              (SELECT p.payment_type FROM payments p WHERE p.sale_id = s.sale_id LIMIT 1) AS payment_type
+       FROM sales s
+       LEFT JOIN users u ON u.user_id = s.user_id
+       WHERE s.tenant_id = $1
+       ORDER BY s.date_time DESC
+       LIMIT 100`,
+      [tenantId]
+    );
     res.json({ success: true, message: 'Sales retrieved', data: result.rows });
   } catch (error) {
     console.error('Get sales error:', error);

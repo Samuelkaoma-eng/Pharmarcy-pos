@@ -18,6 +18,7 @@ import Prescriptions from './pages/Prescriptions';
 import SalesHistory from './pages/SalesHistory';
 import AgentChat from './pages/AgentChat';
 import Settings from './pages/Settings';
+import TillSessions from './pages/TillSessions';
 import Procurement from './pages/Procurement';
 import Insurance from './pages/Insurance';
 import Staff from './pages/Staff';
@@ -64,6 +65,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/prescriptions" element={<Prescriptions />} />
             <Route path="/sales" element={<SalesHistory />} />
             <Route path="/agent" element={<AgentChat />} />
+            <Route path="/till" element={<TillSessions />} />
             <Route path="/procurement" element={<Procurement />} />
             <Route path="/insurance" element={<Insurance />} />
             <Route path="/staff" element={<Staff />} />

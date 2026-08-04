@@ -22,6 +22,7 @@ const supplierController = require('./controllers/supplierController');
 const insuranceController = require('./controllers/insuranceController');
 const drugController = require('./controllers/drugController');
 const fiscalController = require('./controllers/fiscalController');
+const tillController = require('./controllers/tillController');
 const insightController = require('./controllers/insightController');
 const recallController = require('./controllers/recallController');
 
@@ -218,6 +219,15 @@ apiRouter.patch('/prescriptions/:id/dispense', requireRole('Admin', 'Pharmacist'
 apiRouter.get('/sales', saleController.getSales);
 apiRouter.get('/sales/:id', saleController.getSale);
 apiRouter.post('/sales', saleController.createSale);
+
+// Till sessions. A shift at a drawer: float in, takings recorded, cash counted,
+// variance reported. Anyone who can ring up a sale can open and close their own
+// till; only a supervisor sees the whole floor.
+apiRouter.get('/till/current', tillController.getCurrent);
+apiRouter.get('/till/sessions', tillController.getSessions);
+apiRouter.post('/till/open', requireRole('Admin', 'Pharmacist', 'Cashier'), tillController.open);
+apiRouter.get('/till/sessions/:id', tillController.getSession);
+apiRouter.post('/till/sessions/:id/close', requireRole('Admin', 'Pharmacist', 'Cashier'), tillController.close);
 
 // Receipts
 apiRouter.get('/receipts/:receiptNumber/html', receiptController.getReceiptHtml);
