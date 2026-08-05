@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import {
-  Pill, ShieldCheck, CalendarClock, PackageCheck, Activity, Receipt, Bot, ArrowRight, Building2
+  ShieldCheck, CalendarClock, PackageCheck, Activity, Receipt, Bot, ArrowRight, Building2
 } from 'lucide-react';
 
 const EASE = [0.23, 1, 0.32, 1];
@@ -63,7 +63,6 @@ export default function Landing() {
     <div className="landing">
       <header className="landing-nav">
         <div className="landing-brand">
-          <Pill size={22} />
           <span>PharmaPOS</span>
         </div>
         <nav className="landing-nav-links">

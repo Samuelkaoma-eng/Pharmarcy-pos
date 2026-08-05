@@ -841,11 +841,16 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
 }
 .landing-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.95rem; color: var(--text); }
 .landing-nav-links { display: flex; align-items: center; gap: 6px; }
-.landing-nav-links a {
+/* Scoped away from .btn, which also renders as an anchor here. This selector
+   is one class plus one element, so it outranked .btn-primary's own colour and
+   painted the "Apply to join" label muted grey on the solid blue fill -- about
+   1.1:1 against its own background, which is illegible rather than merely
+   low-contrast. The buttons keep the colours their .btn classes define. */
+.landing-nav-links a:not(.btn) {
   color: var(--text-2); text-decoration: none; font-size: 0.83rem; font-weight: 500;
   padding: 6px 10px; border-radius: var(--r-sm); transition: color var(--dur-hover) ease;
 }
-.landing-nav-links a:hover { color: var(--text); }
+.landing-nav-links a:not(.btn):hover { color: var(--text); }
 .landing-nav-btn { padding: 6px 13px; font-size: 0.8rem; }
 @media (max-width: 720px) { .landing-nav-links a[href^="#"] { display: none; } }
 
