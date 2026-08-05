@@ -25,9 +25,16 @@ export default function AgentChat() {
     try {
       const res = await post('agent/query', { prompt: query });
       if (res?.data) {
-        const confirmation = res.data.requires_confirmation ? ' Confirmation required before execution.' : '';
-        const action = res.data.proposed_action ? ` Suggested action: ${res.data.proposed_action}.` : '';
-        setMessages(prev => [...prev, { sender: 'bot', text: `${res.data.response}${action}${confirmation}` }]);
+        // The answer and the proposed action are kept apart rather than
+        // concatenated into one sentence. Now that the answer is written from
+        // live figures, appending a fixed "Suggested action" clause to it made
+        // a real reply read like a script again.
+        setMessages(prev => [...prev, {
+          sender: 'bot',
+          text: res.data.response,
+          action: res.data.proposed_action,
+          confirm: res.data.requires_confirmation
+        }]);
         setLoading(false);
         return;
       }
@@ -77,6 +84,16 @@ export default function AgentChat() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}>
             {m.text}
+            {m.action && (
+              <span style={{ display: 'block', marginTop: '8px', fontSize: '0.78rem', opacity: 0.75 }}>
+                Next: {m.action}
+              </span>
+            )}
+            {m.confirm && (
+              <span style={{ display: 'block', marginTop: '4px', fontSize: '0.78rem', color: 'var(--warn)' }}>
+                Needs confirmation at the till before stock or payment changes.
+              </span>
+            )}
           </div>
         ))}
         {loading && (
