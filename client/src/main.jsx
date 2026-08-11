@@ -8,6 +8,7 @@ import ControlHubLayout from './layouts/ControlHubLayout';
 
 import Landing from './pages/Landing';
 import Register from './pages/Register';
+import OnboardingPortal from './pages/OnboardingPortal';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import POSCheckout from './pages/POSCheckout';
@@ -70,6 +71,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           {/* Public */}
           <Route path="/" element={<Landing />} />
           <Route path="/register" element={<Register />} />
+          {/* Opened from the link an applying pharmacy is sent. It is public
+              because the applicant has no account until it is approved — the
+              token in the link is what authorises it, not a session. */}
+          <Route path="/onboarding/:tenantId" element={<OnboardingPortal />} />
           <Route path="/login" element={<Login />} />
           <Route path="/controlhub/login" element={<CHLogin />} />
 

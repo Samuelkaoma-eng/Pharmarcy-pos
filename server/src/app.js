@@ -121,6 +121,24 @@ app.post('/api/controlhub/login', authLimiter, authController.controlHubLogin);
 app.post('/api/auth/refresh', authController.refresh);
 app.post('/api/auth/logout', authController.logout);
 app.post('/api/onboarding/register', controlHubController.registerTenant);
+app.get('/api/onboarding/documents/types', documentController.getRequiredTypes);
+
+// The applicant's own onboarding page, opened from the link they are sent. The
+// pharmacy files its own compliance paperwork here; the ControlHub reviews what
+// arrives and never uploads on the applicant's behalf. Neither route has a
+// session behind it — the token in the link is the authority, and it reaches
+// one application and nothing else.
+app.get(
+  '/api/onboarding/:id/status',
+  documentController.requireOnboardingToken,
+  documentController.getOnboardingStatus
+);
+app.post(
+  '/api/onboarding/:id/documents',
+  documentController.requireOnboardingToken,
+  documentController.upload.single('file'),
+  documentController.uploadDocument
+);
 
 // ControlHub Routes (SuperAdmin only)
 const controlHubRouter = express.Router();
@@ -138,11 +156,6 @@ controlHubRouter.get('/tenants/:id/readiness', documentController.getReadiness);
 controlHubRouter.patch('/documents/:documentId/review', documentController.reviewDocument);
 controlHubRouter.get('/documents/types', documentController.getRequiredTypes);
 controlHubRouter.get('/documents/:documentId/file', documentController.downloadDocument);
-controlHubRouter.post(
-  '/tenants/:id/documents',
-  documentController.upload.single('file'),
-  documentController.uploadDocument
-);
 
 // Maker-checker
 controlHubRouter.get('/approvals/actions', approvalController.getActions);

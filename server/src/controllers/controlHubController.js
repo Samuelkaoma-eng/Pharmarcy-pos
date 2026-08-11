@@ -1,8 +1,50 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const readiness = require('../services/onboardingReadiness');
+const portal = require('../services/onboardingPortal');
 
 const TENANT_STATUSES = ['REGISTERED', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'ACTIVE', 'REJECTED'];
+
+// The statuses that are a decision rather than a stage, and so are worth
+// telling the applicant about.
+const DECIDED = ['APPROVED', 'ACTIVE', 'REJECTED'];
+
+// Builds the message the pharmacy's owner would be emailed when their
+// application is decided. There is no mail transport here, so it is returned to
+// the reviewer's screen, which renders it as the preview it is — the link
+// inside is real and opens exactly what the emailed one would open.
+const decisionNotification = async (tenant) => {
+  if (!DECIDED.includes(tenant.status)) return null;
+
+  // A decline has to say what was wrong with the paperwork, or the applicant has
+  // nothing to act on.
+  let rejectedDocuments = [];
+  if (tenant.status === 'REJECTED') {
+    const docs = await db.query(
+      "SELECT document_type, review_notes FROM onboarding_documents WHERE tenant_id = $1 AND status = 'REJECTED'",
+      [tenant.tenant_id]
+    );
+    rejectedDocuments = docs.rows;
+  }
+
+  // An approved pharmacy signs in as its administrator, so name them.
+  let adminUsername = null;
+  if (tenant.status !== 'REJECTED') {
+    const admin = await db.query(
+      "SELECT username FROM users WHERE tenant_id = $1 AND role = 'Admin' ORDER BY created_at ASC LIMIT 1",
+      [tenant.tenant_id]
+    );
+    adminUsername = admin.rows[0]?.username || null;
+  }
+
+  return portal.decisionEmail(tenant, {
+    // A declined applicant needs a working link back to their own page. An
+    // approved one does not: they sign in from now on.
+    token: tenant.status === 'REJECTED' ? portal.mintToken(tenant.tenant_id) : null,
+    adminUsername,
+    rejectedDocuments
+  });
+};
 
 exports.getTenants = async (req, res) => {
   try {
@@ -59,7 +101,12 @@ exports.updateTenantStatus = async (req, res) => {
     const result = await db.query('UPDATE tenants SET status = $1 WHERE tenant_id = $2 RETURNING *', [status, id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
 
-    res.json({ message: 'Tenant status updated', data: result.rows[0] });
+    const tenant = result.rows[0];
+
+    res.json({
+      message: 'Tenant status updated',
+      data: { ...tenant, notification: await decisionNotification(tenant) }
+    });
   } catch (error) {
     console.error('ControlHub controller error:', error.message);
     res.status(500).json({ error: 'Server error' });
@@ -132,9 +179,20 @@ exports.registerTenant = async (req, res) => {
       }
     });
 
+    // The pharmacy files its own compliance paperwork, so what registration
+    // hands back is the means to do it: a token scoped to this application
+    // alone, and the link a live deployment would have emailed to the owner.
+    const onboarding_upload_token = portal.mintToken(tenant.tenant_id);
+
     return res.status(201).json({
       message: 'Pharmacy registered and awaiting review',
-      data: { ...tenant, admin_username }
+      data: {
+        ...tenant,
+        admin_username,
+        onboarding_upload_token,
+        onboarding_link: portal.portalLink(tenant.tenant_id, onboarding_upload_token),
+        notification: portal.applicationReceivedEmail(tenant, onboarding_upload_token)
+      }
     });
   } catch (error) {
     console.error('ControlHub controller error:', error.message);

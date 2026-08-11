@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../app');
 const { pool, closeAll } = require('./helpers/adminDb');
 const { SEED, login, controlHubLogin } = require('./helpers/login');
+const portal = require('../services/onboardingPortal');
 
 const REVIEW_TENANT = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const SUNDRY = '55555555-5555-5555-5555-555555555506';
@@ -337,20 +338,22 @@ describe('Onboarding documents match what ZAMRA requires', () => {
     expect(res.body.data.missing.length).toEqual(7);
   });
 
+  // Uploading is the applicant's action, not the reviewer's: these go through
+  // the link the pharmacy was sent, which is the only route that accepts them.
   it('refuses an upload with an unrecognised document type', async () => {
     const res = await request(app)
-      .post(`/api/controlhub/tenants/${REVIEW_TENANT}/documents`)
-      .set('Authorization', `Bearer ${superAdminToken}`)
+      .post(`/api/onboarding/${REVIEW_TENANT}/documents`)
+      .set('Authorization', `Bearer ${portal.mintToken(REVIEW_TENANT)}`)
       .field('document_type', 'NOT_A_REAL_TYPE')
       .attach('file', Buffer.from('%PDF-1.4 test'), { filename: 'x.pdf', contentType: 'application/pdf' });
 
     expect(res.statusCode).toEqual(400);
   });
 
-  it('stores an uploaded document and serves it back', async () => {
+  it('stores an uploaded document and serves it back to the reviewer', async () => {
     const upload = await request(app)
-      .post(`/api/controlhub/tenants/${REVIEW_TENANT}/documents`)
-      .set('Authorization', `Bearer ${superAdminToken}`)
+      .post(`/api/onboarding/${REVIEW_TENANT}/documents`)
+      .set('Authorization', `Bearer ${portal.mintToken(REVIEW_TENANT)}`)
       .field('document_type', 'PACRA_CERTIFICATE')
       .attach('file', Buffer.from('%PDF-1.4 pacra'), { filename: 'pacra.pdf', contentType: 'application/pdf' });
 

@@ -151,6 +151,43 @@ export const upload = async (endpoint, formData) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Link-token requests
+// ---------------------------------------------------------------------------
+// A pharmacy applying to join has no account yet, so the two calls it makes —
+// reading its own application and filing paperwork against it — carry the token
+// from the link it was sent rather than a stored session. These deliberately
+// bypass `request`: there is no session to refresh and nothing to sign out of,
+// so a 401 here means the link has expired and must be reported as such, not
+// treated as a lost session.
+export const getWithToken = async (endpoint, token) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn(`API GET error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
+// The Content-Type header is omitted on purpose, as in `upload` above.
+export const uploadWithToken = async (endpoint, formData, token) => {
+  try {
+    const res = await fetch(formatUrl(endpoint), {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn(`API UPLOAD error for ${endpoint}:`, err);
+    return null;
+  }
+};
+
 // Opens an authenticated file in a new tab. A plain link cannot carry the
 // bearer token, so the bytes are fetched and handed to the browser as a blob.
 export const openAuthedFile = async (endpoint) => {
@@ -168,4 +205,4 @@ export const openAuthedFile = async (endpoint) => {
   return { ok: true };
 };
 
-export const api = { get, post, put, patch, upload, openAuthedFile, logout };
+export const api = { get, post, put, patch, upload, getWithToken, uploadWithToken, openAuthedFile, logout };

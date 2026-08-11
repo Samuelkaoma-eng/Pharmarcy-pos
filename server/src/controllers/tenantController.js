@@ -11,9 +11,19 @@ exports.getDirectory = async (req, res) => {
     // The sign-in page needs the list of pharmacies before anybody has signed
     // in, so this read has no tenant to be scoped to. It returns two columns —
     // the name and the id you would then sign in against — and nothing else.
+    //
+    // IS DISTINCT FROM, not <>. Registration does not ask for a licence number,
+    // so a pharmacy onboarded through it has none; `NULL <> 'PLATFORM-000'` is
+    // NULL rather than true, which is not true, which dropped it from this list.
+    // The effect was that a pharmacy could be reviewed, approved and activated,
+    // and then never appear on the sign-in screen at all — its staff had no way
+    // in and nothing anywhere said why.
     const result = await db.withAuthLookup(() =>
       db.query(
-        "SELECT tenant_id, name FROM tenants WHERE status = 'ACTIVE' AND license_number <> 'PLATFORM-000' ORDER BY name ASC"
+        `SELECT tenant_id, name FROM tenants
+          WHERE status = 'ACTIVE'
+            AND license_number IS DISTINCT FROM 'PLATFORM-000'
+          ORDER BY name ASC`
       )
     );
     res.json({ message: 'Pharmacy directory retrieved', data: result.rows });

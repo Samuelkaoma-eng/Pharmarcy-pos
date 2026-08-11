@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Pill, CheckCircle2 } from 'lucide-react';
 import { post } from '../api/client';
 import { BackLink, EASE, container, item } from '../components/AuthShell';
+import SimulatedEmail from '../components/SimulatedEmail';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -65,10 +66,18 @@ export default function Register() {
               <CheckCircle2 size={34} className="register-done-icon" />
               <h2 className="login-title">Application received</h2>
               <p className="login-subtitle">
-                {submitted.name} has been submitted for review. Sign-in for
-                <strong> {submitted.admin_username}</strong> opens once the application is approved.
+                {submitted.name} has been registered. Your compliance documents are filed by you,
+                from the secure link below — sign-in for
+                <strong> {submitted.admin_username}</strong> opens once the platform team has
+                verified them.
               </p>
-              <Link to="/" className="btn btn-secondary" style={{ width: '100%', marginTop: '22px' }}>
+
+              {/* A live deployment would email this and the applicant would
+                  leave. There is no mail transport here, so the message is
+                  shown instead — the link inside is the real one. */}
+              <SimulatedEmail notification={submitted.notification} delay={0.1} />
+
+              <Link to="/" className="btn btn-secondary" style={{ width: '100%', marginTop: '18px' }}>
                 Back to home
               </Link>
             </motion.div>

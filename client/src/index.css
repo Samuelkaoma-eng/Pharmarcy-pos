@@ -110,6 +110,18 @@ a { color: inherit; }
   align-items: center;
   gap: 8px;
 }
+/* A pharmacy names itself, and some names are long. The heading wraps to at
+   most two lines and is then clipped, so the sidebar keeps its width whatever
+   the tenant is called. The full name is on the element's title attribute. */
+.sidebar-header h2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
 .sidebar-header span { font-size: 0.75rem; color: var(--text-3); display: block; margin-top: 3px; }
 
 .sidebar-nav { padding: 10px; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
@@ -1127,6 +1139,157 @@ textarea.input-field { resize: vertical; font-family: inherit; line-height: 1.5;
      movement, not less meaning. */
   .sidebar, .nav-scrim, .cart-scrim { transition: none !important; }
 }
+
+/* ============================================================
+   ONBOARDING — THE APPLICANT'S SIDE
+   The page an applying pharmacy reaches from the link it is
+   sent. It is public and has no app shell around it, so it
+   carries its own frame.
+   ============================================================ */
+.onboarding-portal {
+  min-height: 100svh;
+  background: var(--bg);
+  padding: 32px 20px 56px;
+  display: flex;
+  justify-content: center;
+}
+
+.onboarding-portal-inner {
+  width: 100%;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.onboarding-portal--message {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-2);
+}
+.onboarding-portal--message h1 { font-size: 1.2rem; color: var(--text); }
+.onboarding-portal--message p { font-size: 0.88rem; max-width: 420px; }
+
+.onboarding-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tenant-primary);
+  font-weight: 650;
+}
+
+.onboarding-head {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 22px;
+}
+.onboarding-head-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.onboarding-head-top h1 { font-size: 1.3rem; font-weight: 700; }
+.onboarding-head h2 { font-size: 0.98rem; font-weight: 620; margin-bottom: 5px; }
+.onboarding-head p { font-size: 0.86rem; color: var(--text-2); line-height: 1.6; }
+
+.onboarding-progress { display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: var(--text-2); }
+.onboarding-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.onboarding-progress-bar span { display: block; height: 100%; background: var(--tenant-primary); border-radius: 999px; }
+
+.onboarding-approved {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(63, 185, 80, 0.28);
+  background: rgba(63, 185, 80, 0.08);
+  color: var(--ok);
+}
+.onboarding-approved p { font-size: 0.86rem; color: var(--text-2); margin-bottom: 10px; }
+
+.onboarding-doc-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 4px 20px;
+  margin-top: 0;
+}
+
+.onboarding-foot { font-size: 0.78rem; color: var(--text-3); line-height: 1.6; }
+
+.doc-state-ok { color: var(--ok); }
+.doc-state-bad { color: var(--danger); }
+.doc-state-wait { color: var(--warn); }
+
+/* The reviewer's side: a rejection is written down before it is recorded. */
+.doc-row--reviewable { flex-direction: column; align-items: stretch; }
+.doc-row-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.doc-reject-reason { display: flex; gap: 8px; padding: 10px 0 2px; flex-wrap: wrap; }
+.doc-reject-reason .input-field { flex: 1 1 240px; }
+
+.review-note { margin: 12px 0 4px; font-size: 0.78rem; color: var(--text-3); line-height: 1.6; }
+
+.app-decision { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ============================================================
+   SIMULATED EMAIL
+   There is no mail transport in this project, so the message a
+   deployment would send is shown on screen. It is framed to
+   look like a quoted message and labelled as a simulation, so
+   it is never mistaken for something that was delivered.
+   ============================================================ */
+.sim-email {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  padding: 16px 18px;
+  margin-top: 18px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sim-email-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.sim-email-head { display: flex; flex-direction: column; gap: 7px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.sim-email-head > div { display: flex; gap: 10px; align-items: baseline; }
+.sim-email-head strong { font-size: 0.84rem; font-weight: 560; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.sim-email-label { font-size: 0.7rem; color: var(--text-3); width: 48px; flex-shrink: 0; }
+
+.sim-email-body { display: flex; flex-direction: column; gap: 9px; }
+.sim-email-body p { font-size: 0.85rem; color: var(--text-2); line-height: 1.65; white-space: pre-line; }
+
+.sim-email-cta { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.sim-email-url {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  background: var(--surface-3);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+}
+
+.sim-email-note { font-size: 0.72rem; color: var(--text-3); line-height: 1.6; }
 
 /* ============================================================
    PRINTED DOCUMENTS

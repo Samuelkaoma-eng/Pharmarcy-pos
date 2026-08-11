@@ -20,11 +20,20 @@ const withAlpha = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
+const PRODUCT_NAME = 'PharmaPOS';
+
 const applyTheme = (themeColor) => {
   const primary = themeColor || FALLBACK_PRIMARY;
   const root = document.documentElement;
   root.style.setProperty('--tenant-primary', primary);
   root.style.setProperty('--tenant-primary-soft', withAlpha(primary, 0.3));
+};
+
+// The browser tab is part of the branding a pharmacy owns. It was fixed in the
+// markup as one seeded tenant's name, so every other pharmacy on the platform
+// ran the day with somebody else's pharmacy on the tab.
+const applyTitle = (name) => {
+  document.title = name ? `${name} — ${PRODUCT_NAME}` : PRODUCT_NAME;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -43,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     if (res?.data) {
       setTenant(res.data);
       applyTheme(res.data.theme_color);
+      applyTitle(res.data.name);
     }
   }, []);
 
@@ -54,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('pos_auth_token');
     localStorage.removeItem('pos_tenant_id');
     applyTheme(FALLBACK_PRIMARY);
+    applyTitle(null);
   }, []);
 
   // The API client calls this when a refresh could not recover the session, so
@@ -112,7 +123,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         refreshTenant: loadTenant,
         currency: tenant?.currency_symbol || 'K',
-        pharmacyName: tenant?.name || 'Pharmacy POS',
+        pharmacyName: tenant?.name || PRODUCT_NAME,
         // True only while a stored session is still being confirmed. Routes use
         // it to hold rather than to decide, so nothing renders on a guess.
         checking,

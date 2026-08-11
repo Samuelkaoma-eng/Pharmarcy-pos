@@ -66,7 +66,10 @@ export default function AppLayout() {
 
       <aside className={`sidebar ${navOpen ? 'is-open' : ''}`}>
         <div className="sidebar-header">
-          <h2>PharmaPOS</h2>
+          {/* The pharmacy's own name, which is what the workspace belongs to.
+              `pharmacyName` was already being read here and then ignored, so
+              every tenant saw the product's name instead of their own. */}
+          <h2 title={pharmacyName}>{pharmacyName}</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', display: 'block', marginTop: '2px' }}>Role: {user?.role || 'Staff'}</span>
           <button
             className="nav-close"
