@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, ShoppingCart, Package, Users, UsersRound, Activity, FileText, History, Bot, Settings, LogOut, MessageSquare, Search, Truck, HeartHandshake, Wallet, FileSpreadsheet, Menu, X } from 'lucide-react';
+import { LogOut, MessageSquare, Search, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { NAV_ITEMS } from '../constants/navigation';
 import { Toaster } from 'sonner';
 import AIChatSidebar from '../components/AIChatSidebar';
 import CommandPalette from '../components/CommandPalette';
@@ -29,22 +30,9 @@ export default function AppLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, [navOpen]);
 
-  const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/pos', icon: ShoppingCart, label: 'POS Checkout', roles: ['Admin', 'Pharmacist', 'Cashier'] },
-    { path: '/inventory', icon: Package, label: 'Inventory', roles: ['Admin', 'Pharmacist'] },
-    { path: '/patients', icon: Users, label: 'Patients', roles: ['Admin', 'Pharmacist', 'Doctor'] },
-    { path: '/triage', icon: Activity, label: 'Triage Queue', roles: ['Admin', 'Pharmacist', 'Doctor'] },
-    { path: '/prescriptions', icon: FileText, label: 'Prescriptions', roles: ['Admin', 'Pharmacist', 'Doctor'] },
-    { path: '/sales', icon: History, label: 'Sales History', roles: ['Admin', 'Pharmacist', 'Cashier'] },
-    { path: '/till', icon: Wallet, label: 'Till Sessions', roles: ['Admin', 'Pharmacist', 'Cashier'] },
-    { path: '/reports', icon: FileSpreadsheet, label: 'Reports', roles: ['Admin'] },
-    { path: '/procurement', icon: Truck, label: 'Procurement', roles: ['Admin', 'Pharmacist'] },
-    { path: '/insurance', icon: HeartHandshake, label: 'Insurance', roles: ['Admin', 'Pharmacist'] },
-    { path: '/agent', icon: Bot, label: 'Assistant' },
-    { path: '/staff', icon: UsersRound, label: 'Staff & Roles', roles: ['Admin'] },
-    { path: '/settings', icon: Settings, label: 'Site Settings', roles: ['Admin'] },
-  ];
+  // Shared with the router, so what the menu hides is also what the router
+  // refuses to open. See client/src/constants/navigation.js.
+  const navItems = NAV_ITEMS;
 
   const handleLogout = () => {
     logout();

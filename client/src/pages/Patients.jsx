@@ -9,6 +9,11 @@ export default function Patients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  // The visit history belongs to the patient being opened, so it is fetched
+  // when one is opened and reported honestly when it cannot be.
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
 
   const [form, setForm] = useState({
     name: '', phone: '', email: '', nrc: '', gender: 'Female', dob: '1998-05-14', address: 'Lusaka'
@@ -35,6 +40,22 @@ export default function Patients() {
     }
 
     setPatients([]);
+  };
+
+  // The list row carries no history, so it is read from the patient's own
+  // record. A failed read says so rather than leaving the last patient's
+  // history on screen under a new name.
+  const openPatient = async (p) => {
+    setSelectedPatient(p);
+    setHistory([]);
+    setHistoryError('');
+    setHistoryLoading(true);
+
+    const res = await get(`patients/${p.customer_id}`);
+    if (res?.data) setHistory(res.data.recent_visits || []);
+    else setHistoryError('This patient’s history could not be loaded.');
+
+    setHistoryLoading(false);
   };
 
   const handleRegisterSubmit = async (e) => {
@@ -120,7 +141,7 @@ export default function Patients() {
                 <td>{p.gender} • {p.dob || '1995-01-01'}</td>
                 <td style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>{p.address}</td>
                 <td>
-                  <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '0.8rem' }} onClick={() => setSelectedPatient(p)}>
+                  <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '0.8rem' }} onClick={() => openPatient(p)}>
                     <Eye size={14} /> View History
                   </button>
                 </td>
@@ -183,10 +204,28 @@ export default function Patients() {
               <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>Address: {selectedPatient.address}</p>
             </div>
 
-            <h4 style={{ fontSize: '0.95rem', color: '#60a5fa' }}>Clinical & Prescription History:</h4>
-            <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-              <p>✓ 2026-08-02: Prescription Verified (Amoxicillin 250mg) by Dr. Martin Phiri</p>
-              <p>✓ 2026-08-02: Triage Vitals Recorded (BP: 120/80, Temp: 37.1°C)</p>
+            <h4 style={{ fontSize: '0.95rem', color: 'var(--tenant-primary)' }}>Clinical &amp; Prescription History:</h4>
+            {/* This showed the same two invented entries for every patient who
+                was ever opened — a prescription attributed to a named
+                prescriber and a set of vitals, neither of which had happened.
+                Fabricated clinical history is not a placeholder; it is the one
+                thing this screen must never do. The real visits come from
+                `patients/:id`, which has always returned them. */}
+            <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {historyLoading && <p>Loading history…</p>}
+              {!historyLoading && historyError && <p style={{ color: 'var(--danger)' }}>{historyError}</p>}
+              {!historyLoading && !historyError && history.length === 0 && (
+                <p>No clinical history recorded for this patient.</p>
+              )}
+              {!historyLoading && !historyError && history.map((v) => (
+                <div key={v.visit_id}>
+                  <p style={{ color: 'var(--text)' }}>
+                    {new Date(v.date).toLocaleDateString()} — {v.status}
+                    {v.reason ? `: ${v.reason}` : ''}
+                  </p>
+                  {v.assessment && <p style={{ fontSize: '0.8rem' }}>{v.assessment}</p>}
+                </div>
+              ))}
             </div>
 
             <button className="btn btn-secondary" onClick={() => setSelectedPatient(null)}>Close</button>

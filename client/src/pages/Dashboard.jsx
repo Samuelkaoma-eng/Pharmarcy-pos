@@ -198,18 +198,34 @@ export default function Dashboard() {
               <tr><th>Product</th><th>Category</th><th>Stock</th></tr>
             </thead>
             <tbody>
-              {lowStockProducts.length > 0 ? lowStockProducts.map((p, idx) => (
-                <tr key={idx}>
+              {lowStockProducts.length > 0 ? lowStockProducts.map((p) => (
+                <tr key={p.product_id || p.name}>
                   <td>{p.name}</td>
                   <td><span className="badge badge-blue">{p.category || 'Drug'}</span></td>
-                  <td><span className="badge badge-red">{p.quantity_on_hand || 5} remaining</span></td>
+                  {/* The real figure, including nought. This read
+                      `p.quantity_on_hand || 5`, so a product that had actually
+                      run out was reported as "5 remaining" — a fabrication
+                      about a real medicine, on the screen a pharmacist uses to
+                      decide what to reorder. */}
+                  <td>
+                    <span className={`badge ${Number(p.quantity_on_hand) === 0 ? 'badge-red' : 'badge-yellow'}`}>
+                      {Number(p.quantity_on_hand) === 0
+                        ? 'Out of stock'
+                        : `${p.quantity_on_hand} remaining`}
+                    </span>
+                  </td>
                 </tr>
               )) : (
-                <>
-                  <tr><td>Amoxicillin 250mg</td><td><span className="badge badge-blue">Antibiotic</span></td><td><span className="badge badge-red">5 remaining</span></td></tr>
-                  <tr><td>Cough Syrup (Benylin)</td><td><span className="badge badge-blue">Cold & Flu</span></td><td><span className="badge badge-yellow">8 remaining</span></td></tr>
-                  <tr><td>Ibuprofen 400mg</td><td><span className="badge badge-blue">Pain Relief</span></td><td><span className="badge badge-yellow">12 remaining</span></td></tr>
-                </>
+                /* This used to invent three medicines — Amoxicillin, Benylin and
+                   Ibuprofen, with stock figures to match — whenever a pharmacy
+                   had nothing below its reorder level. A pharmacy that had just
+                   joined and held no stock at all was shown another pharmacy's
+                   catalogue as though it were its own. */
+                <tr>
+                  <td colSpan={3} style={{ color: 'var(--text-3)' }}>
+                    {loading ? 'Loading stock…' : 'Nothing is below its reorder level.'}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

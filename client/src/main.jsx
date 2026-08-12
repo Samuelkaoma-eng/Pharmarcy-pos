@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { canAccess, HOME_PATH } from './constants/navigation';
 import AppLayout from './layouts/AppLayout';
 import ControlHubLayout from './layouts/ControlHubLayout';
 
@@ -55,6 +56,18 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// A page is opened only by a role entitled to it. The sidebar has always hidden
+// what a role cannot use, but hiding a link is not a control: the router
+// rendered any page to anyone who typed its address, so a cashier could open
+// Staff & Roles and read the staff list, or open Site Settings. The server
+// refuses the actions either way and that remains the guarantee — this stops
+// the page being reachable at all, from the same declaration the menu uses.
+const RoleRoute = ({ path, children }) => {
+  const { user } = useAuth();
+  if (!canAccess(path, user?.role)) return <Navigate to={HOME_PATH} replace />;
+  return children;
+};
+
 const ControlHubRoute = ({ children }) => {
   const { isAuthenticated, user, checking } = useAuth();
   if (checking) return <SessionGate />;
@@ -81,20 +94,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           {/* The workspace is a layout route with no path of its own, so the
               public landing page can own "/" while these stay top level. */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/pos" element={<POSCheckout />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/triage" element={<TriageQueue />} />
-            <Route path="/prescriptions" element={<Prescriptions />} />
-            <Route path="/sales" element={<SalesHistory />} />
-            <Route path="/till" element={<TillSessions />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/procurement" element={<Procurement />} />
-            <Route path="/insurance" element={<Insurance />} />
-            <Route path="/agent" element={<AgentChat />} />
-            <Route path="/staff" element={<Staff />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/dashboard" element={<RoleRoute path="/dashboard"><Dashboard /></RoleRoute>} />
+            <Route path="/pos" element={<RoleRoute path="/pos"><POSCheckout /></RoleRoute>} />
+            <Route path="/inventory" element={<RoleRoute path="/inventory"><Inventory /></RoleRoute>} />
+            <Route path="/patients" element={<RoleRoute path="/patients"><Patients /></RoleRoute>} />
+            <Route path="/triage" element={<RoleRoute path="/triage"><TriageQueue /></RoleRoute>} />
+            <Route path="/prescriptions" element={<RoleRoute path="/prescriptions"><Prescriptions /></RoleRoute>} />
+            <Route path="/sales" element={<RoleRoute path="/sales"><SalesHistory /></RoleRoute>} />
+            <Route path="/till" element={<RoleRoute path="/till"><TillSessions /></RoleRoute>} />
+            <Route path="/reports" element={<RoleRoute path="/reports"><Reports /></RoleRoute>} />
+            <Route path="/procurement" element={<RoleRoute path="/procurement"><Procurement /></RoleRoute>} />
+            <Route path="/insurance" element={<RoleRoute path="/insurance"><Insurance /></RoleRoute>} />
+            <Route path="/agent" element={<RoleRoute path="/agent"><AgentChat /></RoleRoute>} />
+            <Route path="/staff" element={<RoleRoute path="/staff"><Staff /></RoleRoute>} />
+            <Route path="/settings" element={<RoleRoute path="/settings"><Settings /></RoleRoute>} />
           </Route>
 
           <Route path="/controlhub" element={<ControlHubRoute><ControlHubLayout /></ControlHubRoute>}>
