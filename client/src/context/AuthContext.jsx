@@ -46,13 +46,51 @@ export const AuthProvider = ({ children }) => {
   // panels and "Authentication required" scattered through it.
   const [checking, setChecking] = useState(() => Boolean(localStorage.getItem('pos_auth_token')));
 
-  const loadTenant = useCallback(async () => {
+  // Confirms who the session actually belongs to, and loads the branding that
+  // follows from it.
+  //
+  // The role decides which console renders — the dispensary or the platform
+  // ControlHub — and it used to be read from `pos_user` in localStorage and
+  // never checked. localStorage belongs to whoever is sitting at the browser:
+  // editing that one field to "SuperAdmin" was enough to make the ControlHub
+  // shell render, and a stale entry left by an earlier ControlHub sign-in did
+  // the same thing by accident. Every request was still refused by the server,
+  // which reads the role from the signed token, so no platform data was ever
+  // exposed — but a console nobody is entitled to should not draw at all.
+  //
+  // So the identity is now taken from `auth/profile`, which reads it from the
+  // database under the token, and the stored copy is only ever a cache for the
+  // first paint. A session whose identity cannot be confirmed is not a session.
+  const loadSession = useCallback(async () => {
     if (!localStorage.getItem('pos_auth_token')) return;
-    const res = await get('tenants/config');
-    if (res?.data) {
-      setTenant(res.data);
-      applyTheme(res.data.theme_color);
-      applyTitle(res.data.name);
+
+    const [profileRes, tenantRes] = await Promise.all([
+      get('auth/profile'),
+      get('tenants/config')
+    ]);
+
+    if (profileRes?.data) {
+      const confirmed = {
+        id: profileRes.data.user_id,
+        username: profileRes.data.username,
+        full_name: profileRes.data.full_name,
+        role: profileRes.data.role,
+        tenantId: profileRes.data.tenant_id
+      };
+      setUser(confirmed);
+      localStorage.setItem('pos_user', JSON.stringify(confirmed));
+    } else {
+      // Fail closed. An identity the server would not confirm is not one to
+      // fall back on, and falling back is precisely what would restore the
+      // unverified stored role this exists to stop trusting.
+      setUser(null);
+      localStorage.removeItem('pos_user');
+    }
+
+    if (tenantRes?.data) {
+      setTenant(tenantRes.data);
+      applyTheme(tenantRes.data.theme_color);
+      applyTitle(tenantRes.data.name);
     }
   }, []);
 
@@ -78,12 +116,12 @@ export const AuthProvider = ({ children }) => {
     return () => setSessionLostHandler(null);
   }, [clearSession]);
 
-  // Branding follows the signed-in pharmacy, so it is loaded on sign-in and
-  // whenever the app is reopened with a stored session.
+  // Identity and branding both follow the signed-in session, so both are read
+  // on sign-in and whenever the app is reopened with a stored one.
   //
-  // This is also the session check: `tenants/config` is authenticated, so a
-  // stored token that the server will not accept fails here. The API client
-  // attempts one rotation first, and only a failed rotation clears the session.
+  // This is also the session check: both calls are authenticated, so a stored
+  // token the server will not accept fails here. The API client attempts one
+  // rotation first, and only a failed rotation clears the session.
   useEffect(() => {
     let active = true;
     if (!token) {
@@ -91,11 +129,11 @@ export const AuthProvider = ({ children }) => {
       return undefined;
     }
     (async () => {
-      await loadTenant();
+      await loadSession();
       if (active) setChecking(false);
     })();
     return () => { active = false; };
-  }, [token, loadTenant]);
+  }, [token, loadSession]);
 
   const login = (userData, authToken) => {
     setUser(userData);
@@ -121,7 +159,7 @@ export const AuthProvider = ({ children }) => {
         tenant,
         login,
         logout,
-        refreshTenant: loadTenant,
+        refreshTenant: loadSession,
         currency: tenant?.currency_symbol || 'K',
         pharmacyName: tenant?.name || PRODUCT_NAME,
         // True only while a stored session is still being confirmed. Routes use
