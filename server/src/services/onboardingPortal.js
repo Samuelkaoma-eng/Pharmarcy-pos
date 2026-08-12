@@ -15,11 +15,26 @@ const PURPOSE = 'onboarding_documents';
 // them with no way back in.
 const TTL = process.env.ONBOARDING_LINK_TTL || '14d';
 
-// Where the applicant's browser lands. The default matches the Vite dev server
-// in client/vite.config.js; set APP_URL wherever the client actually lives. The
-// link is rendered as an in-app route where it can be, so a mismatch here costs
-// the copied URL its accuracy and nothing else.
-const appUrl = () => (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+// Where the applicant's browser lands.
+//
+// This is the host written into the link the pharmacy is sent, so getting it
+// wrong is not cosmetic: the deployed build published `http://localhost:3000`
+// links, which resolve to the reader's own machine and reach nothing. The
+// in-app button still worked, because it is reduced to a path before being
+// followed — which is precisely what made the fault easy to miss, since the
+// only broken copy was the one an applicant would actually receive.
+//
+// Resolved in order of how much the deployment knows about itself:
+//   APP_URL                — set it when the client is served from elsewhere;
+//   RAILWAY_PUBLIC_DOMAIN  — supplied by the platform, so a deployment is
+//                            correct with no configuration and stays correct
+//                            if the domain is changed;
+//   localhost              — the Vite dev server in client/vite.config.js.
+const appUrl = () => {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  return 'http://localhost:3000';
+};
 
 const mintToken = (tenantId) =>
   jwt.sign({ tenantId, purpose: PURPOSE }, JWT_SECRET, { expiresIn: TTL });

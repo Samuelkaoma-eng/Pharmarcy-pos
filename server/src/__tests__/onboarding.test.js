@@ -132,6 +132,45 @@ describe('Tenant onboarding and ControlHub review', () => {
     expect(ids).toContain(registeredTenantId);
   });
 
+  // The deployed build published links to `http://localhost:3000`, which resolve
+  // to the reader's own machine. The in-app button still worked because it is
+  // reduced to a path before being followed, so the only broken copy was the one
+  // an applicant would actually receive — which is why this is pinned here.
+  describe('the host written into the emailed link', () => {
+    const saved = { app: process.env.APP_URL, railway: process.env.RAILWAY_PUBLIC_DOMAIN };
+
+    afterEach(() => {
+      if (saved.app === undefined) delete process.env.APP_URL;
+      else process.env.APP_URL = saved.app;
+      if (saved.railway === undefined) delete process.env.RAILWAY_PUBLIC_DOMAIN;
+      else process.env.RAILWAY_PUBLIC_DOMAIN = saved.railway;
+    });
+
+    it('uses APP_URL when the client is served from somewhere else', () => {
+      process.env.APP_URL = 'https://pharmacy.example.zm/';
+      // The trailing slash is stripped, or the link would carry a double slash.
+      expect(portal.portalLink('t1', 'tok')).toEqual(
+        'https://pharmacy.example.zm/onboarding/t1?token=tok'
+      );
+    });
+
+    it('falls back to the platform domain, so a deployment needs no configuration', () => {
+      delete process.env.APP_URL;
+      process.env.RAILWAY_PUBLIC_DOMAIN = 'g-16-pharmarcypos.up.railway.app';
+
+      const link = portal.portalLink('t1', 'tok');
+      expect(link).toEqual('https://g-16-pharmarcypos.up.railway.app/onboarding/t1?token=tok');
+      expect(link).not.toContain('localhost');
+      expect(portal.signInLink()).not.toContain('localhost');
+    });
+
+    it('only falls back to localhost when nothing says otherwise', () => {
+      delete process.env.APP_URL;
+      delete process.env.RAILWAY_PUBLIC_DOMAIN;
+      expect(portal.portalLink('t1', 'tok')).toContain('http://localhost:3000');
+    });
+  });
+
   it('lets the applicant upload onboarding documents before ControlHub review', async () => {
     const res = await request(app)
       .post(`/api/onboarding/${registeredTenantId}/documents`)

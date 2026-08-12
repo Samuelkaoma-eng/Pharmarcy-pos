@@ -81,6 +81,10 @@ exports.requireOnboardingToken = async (req, res, next) => {
   try {
     await db.setTenantScope({ tenantId: decoded.tenantId, platformAdmin: false });
     req.onboardingApplicant = true;
+    // Kept on the request so the upload handler can put the tenant back on a
+    // connection if the request scope does not survive the file parse. See
+    // `withRequestScope` below.
+    req.onboardingTenantId = decoded.tenantId;
     return next();
   } catch (err) {
     console.error('Could not scope an onboarding request:', err.message);
@@ -136,7 +140,46 @@ exports.getOnboardingStatus = async (req, res) => {
   }
 };
 
-exports.uploadDocument = async (req, res) => {
+// The tenant lives on the request's database connection, and the connection is
+// found through an AsyncLocalStorage store established by `dbContext`. Every
+// other route reaches its first query directly from a middleware, so the store
+// is plainly still there. This one does not: multer consumes the request stream
+// first, and whether an async store survives that depends on the Node version
+// underneath — which is not the same locally as it is on the deployment.
+//
+// When it does not survive, `db.query` finds no scope and quietly falls back to
+// an unscoped pooled connection. That connection carries no `app.tenant_id`, so
+// row-level security answers every read with nothing: the pharmacy's own row
+// becomes invisible to it and the upload is refused as "Pharmacy not found"
+// while the very same row is being served to the status page beside it. No
+// error is raised, because from the database's point of view nothing went
+// wrong — a query with no tenant returning no rows is the policy working.
+//
+// So the store is re-established rather than assumed. This is a no-op wherever
+// it already survived, and it logs when it did not, because a scope going
+// missing is worth knowing about rather than silently repairing.
+const withRequestScope = (handler) => async (req, res) => {
+  if (db.currentScope()) return handler(req, res);
+
+  console.warn(
+    'The request scope did not survive the file upload; re-establishing it for tenant',
+    req.onboardingTenantId
+  );
+
+  return db.runInScope(async () => {
+    const scope = db.currentScope();
+    try {
+      await db.setTenantScope({ tenantId: req.onboardingTenantId, platformAdmin: false });
+      return await handler(req, res);
+    } finally {
+      // This scope is not the one `dbContext` will release on response close,
+      // so it has to give its own connection back.
+      await db.releaseScope(scope).catch(() => {});
+    }
+  });
+};
+
+const handleUpload = async (req, res) => {
   try {
     const { id } = req.params;
     const { document_type } = req.body;
@@ -201,6 +244,12 @@ exports.uploadDocument = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Exported so the repair can be tested directly: reproducing a lost scope
+// through the HTTP layer is not possible, since the store is established by
+// middleware that always runs.
+exports.withRequestScope = withRequestScope;
+exports.uploadDocument = withRequestScope(handleUpload);
 
 // Streams the stored file back so a reviewer can actually read what they are
 // being asked to verify.
