@@ -179,6 +179,39 @@ const withRequestScope = (handler) => async (req, res) => {
   });
 };
 
+// "Pharmacy not found" has two entirely different causes and the deployment
+// gave no way to tell them apart. An applicant's upload was refused with it
+// while the status page beside it was serving that same pharmacy, and nothing
+// was written down — so when it stopped happening there was no way to say what
+// had been wrong, or whether it would come back.
+//
+// Either the row is visible and its status is not open to uploads, which is the
+// rule working; or the row is not visible at all, which is a scoping fault and
+// has nothing to do with the pharmacy. This says which, once, at the moment it
+// happens.
+const explainMissingPharmacy = async (id) => {
+  try {
+    const seen = await db.query('SELECT status FROM tenants WHERE tenant_id = $1', [id]);
+
+    if (seen.rows.length > 0) {
+      console.warn(
+        `Onboarding upload refused for ${id}: the application is ${seen.rows[0].status}, ` +
+          'which is not open to uploads. This is the rule, not a fault.'
+      );
+      return;
+    }
+
+    console.error(
+      `Onboarding upload refused for ${id}: the pharmacy's own row was not visible to this ` +
+        `request at all. Tenant on the connection: ${db.currentScope()?.tenantId || 'NONE'}. ` +
+        'That is a scoping fault rather than a missing pharmacy, and the applicant was told ' +
+        'the wrong thing.'
+    );
+  } catch (err) {
+    console.error(`Could not establish why pharmacy ${id} was not found:`, err.message);
+  }
+};
+
 const handleUpload = async (req, res) => {
   try {
     const { id } = req.params;
@@ -200,6 +233,7 @@ const handleUpload = async (req, res) => {
     );
     if (tenant.rows.length === 0) {
       fs.unlink(req.file.path, () => {});
+      await explainMissingPharmacy(id);
       return res.status(404).json({ error: 'Pharmacy not found, or its application is already approved' });
     }
 
